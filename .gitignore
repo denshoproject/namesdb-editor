@@ -1,0 +1,9 @@
+*.sqlite3
+*.pyc
+*.deb
+*~
+namesdb-editor/settings.py
+pip-log.txt
+media
+build
+venv/

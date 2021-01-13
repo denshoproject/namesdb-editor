@@ -1,0 +1,7 @@
+# Third-party libs and Django apps used by namesdb-editor
+
+Click
+django
+django-rest-framework
+
+bpython
