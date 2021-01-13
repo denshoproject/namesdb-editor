@@ -4,7 +4,7 @@ SHELL = /bin/bash
 
 INSTALL_BASE=/opt
 INSTALLDIR=$(INSTALL_BASE)/namesdb-editor
-APPDIR=$(INSTALLDIR)/editor
+APPDIR=$(INSTALLDIR)/src
 REQUIREMENTS=$(INSTALLDIR)/requirements.txt
 PIP_CACHE_DIR=$(INSTALL_BASE)/pip-cache
 
