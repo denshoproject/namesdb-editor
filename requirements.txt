@@ -3,5 +3,6 @@
 Click
 django
 django-rest-framework
+python-dateutil
 
 bpython
