@@ -43,9 +43,15 @@ WSGI_APPLICATION = 'editor.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': '/opt/namesdb-editor/db/django.db',
+    },
+    'names': {
+        'ENGINE': 'django.db.backends.sqlite3',
         'NAME': config.get('database', 'name'),
     }
 }
+
+DATABASE_ROUTERS = ['names.models.NamesRouter']
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/

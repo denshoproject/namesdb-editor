@@ -4,6 +4,31 @@ from django.db import models
 from names import csvfile,fileio
 
 
+class NamesRouter:
+    """Write all Names DB data to separate DATABASES['names'] database.
+    """
+    def db_for_read(self, model, **hints):
+        if model._meta.app_label == 'names':
+            return 'names'
+        return None
+
+    def db_for_write(self, model, **hints):
+        if model._meta.app_label == 'names':
+            return 'names'
+        return None
+
+    def allow_relation(self, obj1, obj2, **hints):
+        if ((obj1._meta.app_label == 'names') or
+            (obj2._meta.app_label == 'names')):
+           return True
+        return None
+
+    def allow_migrate(self, db, app_label, model_name=None, **hints):
+        if app_label == 'names':
+            return db == 'names'
+        return None
+
+
 class FarRecord(models.Model):
     """FAR/WRA record model
     
