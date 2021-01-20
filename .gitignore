@@ -4,6 +4,7 @@
 *~
 namesdb-editor/settings.py
 pip-log.txt
+db/
 media
 build
 venv/
