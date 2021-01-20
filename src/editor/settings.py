@@ -42,12 +42,8 @@ WSGI_APPLICATION = 'editor.wsgi.application'
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
 DATABASES = {
     'default': {
-        'ENGINE': config.get('database', 'engine'),
-        'HOST': config.get('database', 'host'),
-        'PORT': config.get('database', 'port'),
+        'ENGINE': 'django.db.backends.sqlite3',
         'NAME': config.get('database', 'name'),
-        'USER': config.get('database', 'user'),
-        'PASSWORD': config.get('database', 'password'),
     }
 }
 
