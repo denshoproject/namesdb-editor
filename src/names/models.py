@@ -67,20 +67,6 @@ class FarRecord(models.Model):
     class Meta:
         verbose_name = "FAR Record"
 
-    @staticmethod
-    def load_csv(csv_path, num_records=None):
-        """Load records from CSV
-        """
-        for n,rowd in enumerate(csvfile.make_rowds(fileio.read_csv(csv_path))):
-            if num_records and (n > num_records):
-                break
-            record = FarRecord()
-            print(n,rowd['m_pseudoid'])
-            for key,val in rowd.items():
-                key = key[2:]  # remove prefix
-                if val:
-                    setattr(record, key, val)
-            record.save()
 
 class WraRecord(models.Model):
     dataset = models.CharField(max_length=30)
@@ -128,18 +114,17 @@ class WraRecord(models.Model):
 
     class Meta:
         verbose_name = "WRA Record"
-    
-    @staticmethod
-    def load_csv(csv_path, num_records=None):
-        """Load records from CSV
-        """
-        for n,rowd in enumerate(csvfile.make_rowds(fileio.read_csv(csv_path))):
-            if num_records and (n > num_records):
-                break
-            record = WraRecord()
-            print(n,rowd['m_pseudoid'])
-            for key,val in rowd.items():
-                key = key[2:]  # remove prefix
-                if val:
-                    setattr(record, key, val)
-            record.save()
+
+def load_csv(class_, csv_path, username, num_records=None):
+    """Load records from CSV
+    """
+    for n,rowd in enumerate(csvfile.make_rowds(fileio.read_csv(csv_path))):
+        if num_records and (n > num_records):
+            break
+        record = class_()
+        print(n,rowd['m_pseudoid'])
+        for key,val in rowd.items():
+            key = key[2:]  # remove prefix
+            if val:
+                setattr(record, key, val)
+        record.save(username=username, note='CSV import')
