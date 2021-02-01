@@ -5,36 +5,33 @@ from .models import FarRecord, WraRecord
 @admin.register(FarRecord)
 class FarRecordAdmin(admin.ModelAdmin):
     list_display = (
-        'dataset', 'pseudoid', 'camp', 'lastname', 'firstname', 'birthyear',
+        'far_id', 'facility', 'last_name', 'first_name', 'year_of_birth',
     )
-    list_display_links = ('pseudoid',)
-    list_filter = ('dataset', 'camp',)
+    list_display_links = ('far_id',)
+    list_filter = ('facility', 'sex', 'citizenship')
     fieldsets = (
-        ('Common', {'fields': (
-            'dataset',
-            'pseudoid',
-            'camp',
-            ('lastname', 'firstname'),
-            'birthyear',
-            'gender',
-            'originalstate',
-            ('familyno', 'individualno'),
-            ('altfamilyid', 'altindividualid'),
-            'ddrreference',
-            'notes',
-        )}),
-        ('FAR', {'fields': (
-            'othernames',
-            'maritalstatus',
-            'citizenship',
-            'alienregistration',
-            ('entrytype', 'entrydate'),
-            'originalcity',
-            ('departuretype', 'departuredate'),
-            ('destinationcity', 'destinationstate'),
-            'campaddress',
-            'farlineid',
-            'errors',
+        (None, {'fields': (
+            ('far_id', 'facility', 'original_order',),
+            'family_number',
+            'far_line_id',
+            ('last_name', 'first_name','other_names',),
+            ('date_of_birth', 'year_of_birth',),
+            ('sex', 'marital_status',),
+            ('citizenship', 'alien_registration',),
+            ('entry_type_code', 'entry_type',),
+            'entry_category',
+            'entry_facility',
+            ('pre_evacuation_address', 'pre_evacuation_state',),
+            'date_of_original_entry',
+            ('departure_type_code', 'departure_type',),
+            'departure_category',
+            'departure_facility',
+            'departure_date',
+            'departure_state',
+            'camp_address_original',
+            ('camp_address_block', 'camp_address_barracks', 'camp_address_room',),
+            'reference',
+            'original_notes',
         )}),
     )
 
@@ -47,34 +44,29 @@ class FarRecordAdmin(admin.ModelAdmin):
 @admin.register(WraRecord)
 class WraRecordAdmin(admin.ModelAdmin):
     list_display = (
-        'dataset', 'pseudoid', 'camp', 'lastname', 'firstname', 'birthyear',
+        'wra_record_id', 'facility', 'lastname', 'firstname', 'middleinitial', 'birthyear',
     )
-    list_display_links = ('pseudoid',)
-    list_filter = ('dataset', 'assemblycenter', 'camp',)
+    list_display_links = ('wra_record_id',)
+    list_filter = ('facility', 'assemblycenter', 'birthcountry',)
     fieldsets = (
-        ('Common', {'fields': (
-            'dataset',
-            'pseudoid',
-            'camp',
-            ('lastname', 'firstname'),
+        (None, {'fields': (
+            'wra_record_id',
+            'facility',
+            ('lastname', 'firstname', 'middleinitial'),
             'birthyear',
             'gender',
             'originalstate',
             ('familyno', 'individualno'),
-            ('altfamilyid', 'altindividualid'),
-            'ddrreference',
             'notes',
-        )}),
-        ('WRA', {'fields': (
             'assemblycenter',
             'originaladdress',
             'birthcountry',
             ('fatheroccupus', 'fatheroccupabr'),
             ('yearsschooljapan', 'gradejapan', 'schooldegree'),
             'yearofusarrival',
-            ('timeinjapan', 'notimesinjapan', 'ageinjapan'),
+            ('timeinjapan', 'ageinjapan'),
             'militaryservice',
-            'maritalstatus',
+            'martitalstatus',
             'ethnicity',
             'birthplace',
             'citizenshipstatus',
@@ -82,8 +74,7 @@ class WraRecordAdmin(admin.ModelAdmin):
             'language',
             'religion',
             ('occupqual1', 'occupqual2', 'occupqual3'),
-            ('occuppotn1', 'occuppotn2'),
-            'filenumber',
-            'errors',
+            ('occupotn1', 'occupotn2'),
+            'wra_filenumber',
         )}),
     )
