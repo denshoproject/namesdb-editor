@@ -5,13 +5,13 @@ from .models import FarRecord, WraRecord
 @admin.register(FarRecord)
 class FarRecordAdmin(admin.ModelAdmin):
     list_display = (
-        'far_id', 'facility', 'last_name', 'first_name', 'year_of_birth',
+        'far_record_id', 'facility', 'last_name', 'first_name', 'year_of_birth',
     )
-    list_display_links = ('far_id',)
+    list_display_links = ('far_record_id',)
     list_filter = ('facility', 'sex', 'citizenship')
     fieldsets = (
         (None, {'fields': (
-            ('far_id', 'facility', 'original_order',),
+            ('far_record_id', 'facility', 'original_order',),
             'family_number',
             'far_line_id',
             ('last_name', 'first_name','other_names',),

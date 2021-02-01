@@ -32,7 +32,7 @@ class NamesRouter:
 
 
 class FarRecord(models.Model):
-    far_id                  = models.CharField(max_length=255, primary_key=1, verbose_name='FAR Record ID', help_text="Derived from FAR ledger id + line id ('original_order')")
+    far_record_id                  = models.CharField(max_length=255, primary_key=1, verbose_name='FAR Record ID', help_text="Derived from FAR ledger id + line id ('original_order')")
     facility                = models.CharField(max_length=255,          verbose_name='Facility', help_text='Identifier of WRA facility')
     original_order          = models.CharField(max_length=255, blank=1, verbose_name='Original Order', help_text='Absolute line number in physical FAR ledger')
     family_number           = models.CharField(max_length=255, blank=1, verbose_name='WRA Family Number', help_text='WRA-assigned family number')
@@ -71,7 +71,7 @@ class FarRecord(models.Model):
         verbose_name = "FAR Record"
 
     def __repr__(self):
-        return f'<{self.__class__.__name__} {self.far_id}>'
+        return f'<{self.__class__.__name__} {self.far_record_id}>'
 
     def save(self, username=None, *args, **kwargs):
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
@@ -79,13 +79,13 @@ class FarRecord(models.Model):
             username = getattr(self, 'user').username
         # get existing record
         try:
-            old = FarRecord.objects.get(pseudoid=self.pseudoid)
+            old = FarRecord.objects.get(far_record_id=self.far_record_id)
         except FarRecord.DoesNotExist:
             old = None
         # should be field in admin
         note = ''
         r = Revision(
-            record_id=self.far_id,
+            record_id=self.far_record_id,
             username=username, note=note, diff=make_diff(old, self)
         )
         r.save()
@@ -93,7 +93,7 @@ class FarRecord(models.Model):
         super(FarRecord, self).save()
 
     def revisions(self):
-        return Revision.objects.filter(model='far', record_id=self.far_id)
+        return Revision.objects.filter(model='far', record_id=self.far_record_id)
 
 
 class WraRecord(models.Model):
@@ -147,7 +147,7 @@ class WraRecord(models.Model):
             username = getattr(self, 'user').username
         # get existing record
         try:
-            old = WraRecord.objects.get(pseudoid=self.pseudoid)
+            old = WraRecord.objects.get(wra_record_id=self.wra_record_id)
         except WraRecord.DoesNotExist:
             old = None
         # should be field in admin
@@ -214,7 +214,7 @@ def load_csv(class_, csv_path, username, num_records=None):
             break
         record = class_()
         try:
-            idkey = 'far_id'
+            idkey = 'far_record_id'
             x = rowd[idkey]
         except:
             idkey = 'wra_record_id'
