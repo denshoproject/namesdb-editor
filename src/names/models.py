@@ -209,6 +209,7 @@ def make_diff(old, new):
 def load_csv(class_, csv_path, username, num_records=None):
     """Load records from CSV
     """
+    start = timezone.now()
     for n,rowd in enumerate(csvfile.make_rowds(fileio.read_csv(csv_path))):
         if num_records and (n > num_records):
             break
@@ -226,3 +227,5 @@ def load_csv(class_, csv_path, username, num_records=None):
                     val = val.strip()
                 setattr(record, key, val)
         record.save(username=username, note='CSV import')
+    elapsed = timezone.now() - start
+    return n,elapsed
