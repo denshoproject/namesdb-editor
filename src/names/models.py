@@ -156,7 +156,14 @@ class FarRecord(models.Model):
         verbose_name = "FAR Record"
 
     def __repr__(self):
-        return f'<{self.__class__.__name__} {self.far_record_id}>'
+        return '<{}(far_record_id={})>'.format(
+            self.__class__.__name__, self.far_record_id
+        )
+
+    def __str__(self):
+        return '{} {} ({}) {} {}'.format(
+            self.last_name, self.first_name, self.sex, self.facility, self.far_record_id
+        )
 
     def save(self, username=None, *args, **kwargs):
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
@@ -224,7 +231,14 @@ class WraRecord(models.Model):
         verbose_name = "WRA Record"
 
     def __repr__(self):
-        return f'<{self.__class__.__name__} {self.wra_record_id}>'
+        return '<{}(wra_record_id={})>'.format(
+            self.__class__.__name__, self.wra_record_id
+        )
+
+    def __str__(self):
+        return '{} {} ({}) {} {}'.format(
+            self.lastname, self.firstname, self.gender, self.facility,self.wra_record_id
+        )
 
     def save(self, username=None, *args, **kwargs):
         # request.user added to obj in names.admin.WraRecordAdmin.save_model
@@ -260,7 +274,7 @@ class Revision(models.Model):
     diff = models.TextField()
 
     def __repr__(self):
-        return f'<Revision {self.timestamp} {self.pseudoid} {self.username}>'
+        return f'<Revision {self.timestamp} {self.username} {self.model} {self.record_id}>'
 
 def jsonlines(obj):
     """JSONlines representation of object fields, for making diffs
