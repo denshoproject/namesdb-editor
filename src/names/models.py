@@ -151,6 +151,7 @@ class FarRecord(models.Model):
     camp_address_room       = models.CharField(max_length=255, blank=1, verbose_name='Camp Address Room', help_text='Room identifier of camp address')
     reference               = models.CharField(max_length=255, blank=1, verbose_name='Internal FAR Reference', help_text='Pointer to another row in the roster; page number in source pdf and the original order in the consolidated roster for the camp')
     original_notes          = models.CharField(max_length=255, blank=1, verbose_name='Original Notes', help_text='Notes from original statistics section recorder, often a reference to another name in the roster')
+    person = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
     timestamp               = models.DateTimeField(auto_now_add=True, verbose_name='Last Updated')
 
     class Meta:
@@ -227,6 +228,7 @@ class WraRecord(models.Model):
     occupotn1         = models.CharField(max_length=255, blank=1, verbose_name='Primary potential occupation', help_text='Primary potential occupation')
     occupotn2         = models.CharField(max_length=255, blank=1, verbose_name='Secondary potential occupation', help_text='Secondary potential occupation')
     wra_filenumber    = models.CharField(max_length=255,          verbose_name='WRA Filenumber', help_text='WRA-assigned 6-digit filenumber identifier')
+    person = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
     timestamp         = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
 
     class Meta:

@@ -35,8 +35,10 @@ class FarRecordAdmin(admin.ModelAdmin):
         'camp_address_original', 'camp_address_block', 'camp_address_barracks',
         'camp_address_room', 'reference', 'original_notes',
     )
+    autocomplete_fields = ['person',]
     fieldsets = (
         (None, {'fields': (
+            'person',
             ('far_record_id', 'facility', 'original_order',),
             'family_number',
             'far_line_id',
@@ -86,8 +88,10 @@ class WraRecordAdmin(admin.ModelAdmin):
         'occupqual1', 'occupqual2', 'occupqual3', 'occupotn1', 'occupotn2',
         'wra_filenumber',
     )
+    autocomplete_fields = ['person',]
     fieldsets = (
         (None, {'fields': (
+            'person',
             'wra_record_id',
             'facility',
             ('lastname', 'firstname', 'middleinitial'),
@@ -123,18 +127,61 @@ class WraRecordAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
+class FarRecordInline(admin.TabularInline):
+    model = FarRecord
+    extra = 0
+    show_change_link = True
+    fields = (
+        'far_record_id', 'facility', 'original_order',
+        'family_number',
+        'far_line_id',
+        'last_name', 'first_name','other_names',
+        'date_of_birth', 'year_of_birth',
+        'reference',
+    )
+
+    def has_add_permission(self, request, obj): return False
+    def has_change_permission(self, request, obj): return False
+    def has_delete_permission(self, request, obj): return False
+
+
+class WraRecordInline(admin.TabularInline):
+    model = WraRecord
+    extra = 0
+    show_change_link = True
+    fields = (
+        'wra_record_id',
+        'facility',
+        'lastname', 'firstname', 'middleinitial',
+        'birthyear',
+        'gender',
+        'originalstate',
+        'familyno', 'individualno',
+        'assemblycenter',
+        'originaladdress',
+    )
+
+    def has_add_permission(self, request, obj): return False
+    def has_change_permission(self, request, obj): return False
+    def has_delete_permission(self, request, obj): return False
+
+
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'family_name', 'given_name', 'preferred_name', 'gender', 'birth_date',
     )
     list_display_links = ('id', 'family_name', 'given_name',)
-    list_filter = ()
+    list_filter = (
+        'gender', 'citizenship',
+        'preexclusion_residence_state', 'postexclusion_residence_state',
+    )
     search_fields = (
         'family_name', 'given_name', 'given_name_alt', 'other_names',
         'middle_name', 'prefix_name', 'suffix_name', 'jp_name',
         'preferred_name',
     )
+    inlines = [FarRecordInline, WraRecordInline,]
     fieldsets = (
         (None, {'fields': (
             'nr_id',
