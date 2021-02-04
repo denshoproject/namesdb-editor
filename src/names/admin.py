@@ -1,5 +1,54 @@
 from django.contrib import admin
-from .models import FarRecord, WraRecord
+from .models import FarRecord, WraRecord, Person, Facility, PersonFacility
+
+
+@admin.register(Person)
+class PersonAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'family_name', 'given_name', 'preferred_name', 'gender', 'birth_date',
+    )
+    list_display_links = ('id', 'family_name', 'given_name',)
+    list_filter = ()
+    fieldsets = (
+        (None, {'fields': (
+            'nr_id',
+            ('family_name', 'given_name'),
+            'given_name_alt',
+            'other_names',
+            'middle_name',
+            ('prefix_name', 'suffix_name'),
+            'jp_name',
+            'preferred_name',
+            ('birth_date', 'birth_date_text'),
+            'birth_place',
+            ('death_date', 'death_date_text'),
+            ('wra_family_no', 'wra_individual_no'),
+            ('citizenship', 'alien_registration_no'),
+            'gender',
+            ('preexclusion_residence_city', 'preexclusion_residence_state'),
+            ('postexclusion_residence_city', 'postexclusion_residence_state'),
+            ('exclusion_order_title', 'exclusion_order_id'),
+        )}),
+    )
+
+    def save_model(self, request, obj, form, change):
+        # request.user is used by Revision
+        obj.user = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(Facility)
+class FacilityAdmin(admin.ModelAdmin):
+    list_display = (
+        'facility_id', 'facility_type', 'facility_name',
+    )
+    list_display_links = ('facility_id',)
+    list_filter = ('facility_type',)
+    fieldsets = (
+        (None, {'fields': (
+            'facility_id', 'facility_type', 'facility_name'
+        )}),
+    )
 
 
 @admin.register(FarRecord)
