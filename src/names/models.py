@@ -88,6 +88,7 @@ class Person(models.Model):
         # should be field in admin
         note = ''
         r = Revision(
+            model=self.__class__.__name__,
             record_id=self.nr_id,
             username=username, note=note, diff=make_diff(old, self)
         )
@@ -177,6 +178,7 @@ class FarRecord(models.Model):
         # should be field in admin
         note = ''
         r = Revision(
+            model=self.__class__.__name__,
             record_id=self.far_record_id,
             username=username, note=note, diff=make_diff(old, self)
         )
@@ -252,6 +254,7 @@ class WraRecord(models.Model):
         # should be field in admin
         note = ''
         r = Revision(
+            model=self.__class__.__name__,
             record_id=self.wra_record_id,
             username=username, note=note, diff=make_diff(old, self)
         )
