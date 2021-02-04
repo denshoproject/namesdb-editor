@@ -78,3 +78,8 @@ class WraRecordAdmin(admin.ModelAdmin):
             'wra_filenumber',
         )}),
     )
+
+    def save_model(self, request, obj, form, change):
+        # request.user is used by Revision
+        obj.user = request.user
+        super().save_model(request, obj, form, change)
