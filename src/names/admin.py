@@ -9,6 +9,11 @@ class PersonAdmin(admin.ModelAdmin):
     )
     list_display_links = ('id', 'family_name', 'given_name',)
     list_filter = ()
+    search_fields = (
+        'family_name', 'given_name', 'given_name_alt', 'other_names',
+        'middle_name', 'prefix_name', 'suffix_name', 'jp_name',
+        'preferred_name',
+    )
     fieldsets = (
         (None, {'fields': (
             'nr_id',
@@ -58,6 +63,18 @@ class FarRecordAdmin(admin.ModelAdmin):
     )
     list_display_links = ('far_record_id',)
     list_filter = ('facility', 'sex', 'citizenship')
+    search_fields = (
+        'facility', 'original_order', 'family_number', 'far_line_id',
+        'last_name', 'first_name', 'other_names',
+        'date_of_birth', 'year_of_birth',
+        'sex', 'marital_status', 'citizenship', 'alien_registration',
+        'entry_type_code', 'entry_type', 'entry_category', 'entry_facility',
+        'pre_evacuation_address', 'pre_evacuation_state', 'date_of_original_entry',
+        'departure_type_code', 'departure_type', 'departure_category',
+        'departure_facility', 'departure_date', 'departure_state',
+        'camp_address_original', 'camp_address_block', 'camp_address_barracks',
+        'camp_address_room', 'reference', 'original_notes',
+    )
     fieldsets = (
         (None, {'fields': (
             ('far_record_id', 'facility', 'original_order',),
@@ -97,6 +114,18 @@ class WraRecordAdmin(admin.ModelAdmin):
     )
     list_display_links = ('wra_record_id',)
     list_filter = ('facility', 'assemblycenter', 'birthcountry',)
+    search_fields = (
+        'facility',
+        'lastname', 'firstname', 'middleinitial',
+        'birthyear', 'gender', 'originalstate', 'familyno', 'individualno',
+        'notes', 'assemblycenter', 'originaladdress', 'birthcountry',
+        'fatheroccupus', 'fatheroccupabr', 'yearsschooljapan', 'gradejapan',
+        'schooldegree', 'yearofusarrival', 'timeinjapan', 'ageinjapan',
+        'militaryservice', 'martitalstatus', 'ethnicity', 'birthplace',
+        'citizenshipstatus', 'highestgrade', 'language', 'religion',
+        'occupqual1', 'occupqual2', 'occupqual3', 'occupotn1', 'occupotn2',
+        'wra_filenumber',
+    )
     fieldsets = (
         (None, {'fields': (
             'wra_record_id',
