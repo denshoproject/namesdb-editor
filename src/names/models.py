@@ -31,6 +31,16 @@ class NamesRouter:
         return None
 
 
+class Facility(models.Model):
+    facility_id   = models.CharField(max_length=30, primary_key=True, verbose_name='Facility ID',   help_text='ID of facility where detained')
+    facility_type = models.CharField(max_length=30,                   verbose_name='Facility Type', help_text='Type of facility where detained')
+    facility_name = models.CharField(max_length=30,                   verbose_name='Facility Name', help_text='Name of facility where detained')
+
+    class Meta:
+        verbose_name = 'Facility'
+        verbose_name_plural = 'Facilities'
+
+
 class Person(models.Model):
     nr_id                         = models.CharField(max_length=30,          verbose_name='Names Registry ID',         help_text='Names Registry unique identifier')
     family_name                   = models.CharField(max_length=30,          verbose_name='Last Name',                 help_text='Preferred family or last name')
@@ -98,16 +108,6 @@ class Person(models.Model):
 
     def revisions(self):
         return Revision.objects.filter(model='persopn', record_id=self.nr_id)
-
-
-class Facility(models.Model):
-    facility_id   = models.CharField(max_length=30, primary_key=True, verbose_name='Facility ID',   help_text='ID of facility where detained')
-    facility_type = models.CharField(max_length=30,                   verbose_name='Facility Type', help_text='Type of facility where detained')
-    facility_name = models.CharField(max_length=30,                   verbose_name='Facility Name', help_text='Name of facility where detained')
-
-    class Meta:
-        verbose_name = 'Facility'
-        verbose_name_plural = 'Facilities'
 
 
 class PersonFacility(models.Model):
