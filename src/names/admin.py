@@ -40,6 +40,21 @@ class RevisionAdmin(admin.ModelAdmin):
     )
 
 
+class RevisionInline(GenericTabularInline):
+    model = Revision
+    extra = 0
+    show_change_link = True
+    readonly_fields = ('timestamp',)
+    max_num=5
+    fields = (
+        'timestamp', 'username', 'diff',
+    )
+
+    def has_add_permission(self, request, obj): return False
+    def has_change_permission(self, request, obj): return False
+    def has_delete_permission(self, request, obj): return False
+
+
 @admin.register(Facility)
 class FacilityAdmin(admin.ModelAdmin):
     list_display = (
@@ -78,6 +93,7 @@ class FarRecordAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ['person',]
     readonly_fields = ('timestamp',)
+    inlines = (RevisionInline,)
     fieldsets = (
         (None, {'fields': (
             ('person', 'timestamp'),
@@ -132,6 +148,7 @@ class WraRecordAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ['person',]
     readonly_fields = ('timestamp',)
+    inlines = (RevisionInline,)
     fieldsets = (
         (None, {'fields': (
             ('person', 'timestamp'),
@@ -235,7 +252,9 @@ class PersonAdmin(admin.ModelAdmin):
         'middle_name', 'prefix_name', 'suffix_name', 'jp_name',
         'preferred_name',
     )
-    inlines = [PersonFacilityInline, FarRecordInline, WraRecordInline]
+    inlines = [
+        PersonFacilityInline, FarRecordInline, WraRecordInline, RevisionInline,
+    ]
     readonly_fields = ('timestamp',)
     fieldsets = (
         (None, {'fields': (
