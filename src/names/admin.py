@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.contrib.contenttypes.admin import GenericTabularInline
+
 from .models import FarRecord, WraRecord, Person, Facility, PersonFacility
 from .models import Revision
 
@@ -6,29 +8,34 @@ from .models import Revision
 @admin.register(Revision)
 class RevisionAdmin(admin.ModelAdmin):
     list_display = (
-        'record_id',
-        'model',
+        'content_type',
+        'object_id',
+        'content_object',
         'username',
+        'timestamp',
     )
-    list_display_links = ('record_id',)
+    list_display_links = ('content_object',)
     list_filter = (
-        'model',
+        'content_type',
         'username',
     )
     search_fields = (
-        'model',
-        'record_id',
+        #'content_type',
+        'object_id',
+        #'content_object',
         'username',
-        'note',
+        #'note',
         'diff',
     )
     date_hierarchy = 'timestamp'
-    readonly_fields = ('timestamp',)
+    readonly_fields = ('timestamp','content_object')
     fieldsets = (
         (None, {'fields': (
-            'timestamp',
-            ('model', 'record_id', 'username'),
-            ('diff', 'note'),
+            ('timestamp', 'content_object'),
+            ('content_type', 'object_id'),
+            ('username'),
+            'diff',
+            #'note',
         )}),
     )
 
@@ -228,7 +235,7 @@ class PersonAdmin(admin.ModelAdmin):
         'middle_name', 'prefix_name', 'suffix_name', 'jp_name',
         'preferred_name',
     )
-    inlines = [PersonFacilityInline, FarRecordInline, WraRecordInline,]
+    inlines = [PersonFacilityInline, FarRecordInline, WraRecordInline]
     readonly_fields = ('timestamp',)
     fieldsets = (
         (None, {'fields': (

@@ -2,6 +2,8 @@ from datetime import datetime
 import difflib
 import json
 
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
 
@@ -100,14 +102,13 @@ class Person(models.Model):
             old = None
         # should be field in admin
         note = ''
+        self.timestamp = timezone.now()
+        super(Person, self).save()
         r = Revision(
-            model=self.__class__.__name__,
-            record_id=self.nr_id,
+            content_object=self,
             username=username, note=note, diff=make_diff(old, self)
         )
         r.save()
-        self.timestamp = timezone.now()
-        super(Person, self).save()
 
     def revisions(self):
         return Revision.objects.filter(model='persopn', record_id=self.nr_id)
@@ -181,14 +182,13 @@ class FarRecord(models.Model):
             old = None
         # should be field in admin
         note = ''
+        self.timestamp = timezone.now()
+        super(FarRecord, self).save()
         r = Revision(
-            model=self.__class__.__name__,
-            record_id=self.far_record_id,
+            content_object=self,
             username=username, note=note, diff=make_diff(old, self)
         )
         r.save()
-        self.timestamp = timezone.now()
-        super(FarRecord, self).save()
 
     def revisions(self):
         return Revision.objects.filter(model='far', record_id=self.far_record_id)
@@ -258,14 +258,13 @@ class WraRecord(models.Model):
             old = None
         # should be field in admin
         note = ''
+        self.timestamp = timezone.now()
+        super(WraRecord, self).save()
         r = Revision(
-            model=self.__class__.__name__,
-            record_id=self.wra_record_id,
+            content_object=self,
             username=username, note=note, diff=make_diff(old, self)
         )
         r.save()
-        self.timestamp = timezone.now()
-        super(WraRecord, self).save()
 
     def revisions(self):
         return Revision.objects.filter(
@@ -274,18 +273,19 @@ class WraRecord(models.Model):
 
 
 class Revision(models.Model):
-    model = models.CharField(max_length=30)
-    record_id = models.CharField(max_length=255)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.CharField(max_length=30)
+    content_object = GenericForeignKey("content_type", "object_id")
     timestamp = models.DateTimeField(auto_now_add=True)
     username = models.CharField(max_length=30)
     note = models.CharField(max_length=255, blank=1)
     diff = models.TextField()
 
     def __repr__(self):
-        return f'<Revision {self.timestamp} {self.username} {self.model} {self.record_id}>'
+        return f'<Revision {self.content_object} {self.timestamp} {self.username}>'
 
 def _jsonfriendly_value(value):
-    if isinstance(value, datetime):
+    if not isinstance(value, str):
         value = str(value)
     return value
 
@@ -305,7 +305,13 @@ def jsonlines(obj):
 def make_diff(old, new):
     if not old:
         # no diff for revision 0
-        return ''
+        # get object id
+        oid = None
+        fieldnames = ['far_record_id', 'wra_record_id', 'nr_id',]
+        for fieldname in fieldnames:
+            if getattr(new, fieldname, None):
+                oid = getattr(new, fieldname)
+        return f'{oid}: object created'
     return '\n'.join([
         line
         for line in difflib.unified_diff(
