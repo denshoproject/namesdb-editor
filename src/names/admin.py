@@ -1,5 +1,36 @@
 from django.contrib import admin
 from .models import FarRecord, WraRecord, Person, Facility, PersonFacility
+from .models import Revision
+
+
+@admin.register(Revision)
+class RevisionAdmin(admin.ModelAdmin):
+    list_display = (
+        'record_id',
+        'model',
+        'username',
+    )
+    list_display_links = ('record_id',)
+    list_filter = (
+        'model',
+        'username',
+    )
+    search_fields = (
+        'model',
+        'record_id',
+        'username',
+        'note',
+        'diff',
+    )
+    date_hierarchy = 'timestamp'
+    readonly_fields = ('timestamp',)
+    fieldsets = (
+        (None, {'fields': (
+            'timestamp',
+            ('model', 'record_id', 'username'),
+            ('diff', 'note'),
+        )}),
+    )
 
 
 @admin.register(Facility)
