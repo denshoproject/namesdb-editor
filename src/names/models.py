@@ -71,6 +71,7 @@ class Person(models.Model):
 #    record_id		blank=1	Record ID	ID of related record
 #    record_type		blank=1	Record Source	Type of related record. e.g., 'far', 'wra' 
     timestamp                     = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
+    facility = models.ManyToManyField(Facility, through='PersonFacility')
 
     class Meta:
         verbose_name = 'Person'
@@ -111,10 +112,10 @@ class Person(models.Model):
 
 
 class PersonFacility(models.Model):
-    person     = models.ForeignKey(Person, on_delete=models.CASCADE)
-    facility   = models.ForeignKey(Facility, on_delete=models.CASCADE)
-    entry_date = models.DateField(verbose_name='Facility Entry Date', help_text='Date of entry to detention facility')
-    exit_date  = models.DateField(verbose_name='Facility Exit Date',  help_text='Date of exit from detention facility')
+    person     = models.ForeignKey(Person, on_delete=models.DO_NOTHING)
+    facility   = models.ForeignKey(Facility, on_delete=models.DO_NOTHING)
+    entry_date = models.DateField(blank=1, verbose_name='Facility Entry Date', help_text='Date of entry to detention facility')
+    exit_date  = models.DateField(blank=1, verbose_name='Facility Exit Date',  help_text='Date of exit from detention facility')
 
 
 class FarRecord(models.Model):

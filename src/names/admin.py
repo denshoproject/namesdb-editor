@@ -9,6 +9,9 @@ class FacilityAdmin(admin.ModelAdmin):
     )
     list_display_links = ('facility_id',)
     list_filter = ('facility_type',)
+    search_fields = (
+        'facility_id', 'facility_type', 'facility_name',
+    )
     fieldsets = (
         (None, {'fields': (
             'facility_id', 'facility_type', 'facility_name'
@@ -127,6 +130,17 @@ class WraRecordAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
+class PersonFacilityInline(admin.TabularInline):
+    model = PersonFacility
+    extra = 0
+    show_change_link = True
+    autocomplete_fields = ['facility',]
+
+    def has_add_permission(self, request, obj): return True
+    def has_change_permission(self, request, obj): return True
+    def has_delete_permission(self, request, obj): return True
+
+
 class FarRecordInline(admin.TabularInline):
     model = FarRecord
     extra = 0
@@ -181,7 +195,7 @@ class PersonAdmin(admin.ModelAdmin):
         'middle_name', 'prefix_name', 'suffix_name', 'jp_name',
         'preferred_name',
     )
-    inlines = [FarRecordInline, WraRecordInline,]
+    inlines = [PersonFacilityInline, FarRecordInline, WraRecordInline,]
     fieldsets = (
         (None, {'fields': (
             'nr_id',
