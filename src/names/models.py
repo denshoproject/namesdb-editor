@@ -102,8 +102,8 @@ class Person(models.Model):
 
 class Facility(models.Model):
     facility_id   = models.CharField(max_length=30, primary_key=True, verbose_name='Facility ID',   help_text='ID of facility where detained')
-    facility_name = models.CharField(max_length=30,                   verbose_name='Facility Type', help_text='Type of facility where detained')
-    facility_type = models.CharField(max_length=30,                   verbose_name='Facility Name', help_text='Name of facility where detained')
+    facility_type = models.CharField(max_length=30,                   verbose_name='Facility Type', help_text='Type of facility where detained')
+    facility_name = models.CharField(max_length=30,                   verbose_name='Facility Name', help_text='Name of facility where detained')
 
     class Meta:
         verbose_name = 'Facility'
