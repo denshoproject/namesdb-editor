@@ -1,4 +1,6 @@
+from datetime import datetime
 import difflib
+import json
 
 from django.db import models
 from django.utils import timezone
@@ -282,16 +284,21 @@ class Revision(models.Model):
     def __repr__(self):
         return f'<Revision {self.timestamp} {self.username} {self.model} {self.record_id}>'
 
+def _jsonfriendly_value(value):
+    if isinstance(value, datetime):
+        value = str(value)
+    return value
+
 def jsonlines(obj):
     """JSONlines representation of object fields, for making diffs
     see https://jsonlines.org/
     """
     if obj:
         return [
-            str( { fieldname: getattr(obj, fieldname) } )
-            for fieldname in [
-                field.name for field in obj._meta.fields
-            ]
+            json.dumps({
+                fieldname: _jsonfriendly_value(getattr(obj, fieldname))
+            })
+            for fieldname in [field.name for field in obj._meta.fields]
         ]
     return ''
 
