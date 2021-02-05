@@ -334,3 +334,26 @@ def load_csv(class_, csv_path, username, num_records=None):
         record.save(username=username, note='CSV import')
     elapsed = timezone.now() - start
     return n,elapsed
+
+
+def load_facilities(csv_path):
+    unique = list(set([
+        rowd['facility']
+        for rowd in csvfile.make_rowds(fileio.read_csv(csv_path))
+    ]))
+    dicts = sorted(
+        [
+            {'num':int(f.split('-')[0]), 'name':f.split('-')[1], 'id':f}
+            for f in unique
+        ],
+        key=lambda x: x['num']
+    )
+    facilities = [
+        Facility(
+            facility_id=d['id'],
+            facility_name=d['name'],
+            facility_type='unspecified',
+        )
+        for d in dicts
+    ]
+    return facilities
