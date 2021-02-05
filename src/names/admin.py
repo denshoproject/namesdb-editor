@@ -39,9 +39,10 @@ class FarRecordAdmin(admin.ModelAdmin):
         'camp_address_room', 'reference', 'original_notes',
     )
     autocomplete_fields = ['person',]
+    readonly_fields = ('timestamp',)
     fieldsets = (
         (None, {'fields': (
-            'person',
+            ('person', 'timestamp'),
             ('far_record_id', 'facility', 'original_order',),
             'family_number',
             'far_line_id',
@@ -92,9 +93,10 @@ class WraRecordAdmin(admin.ModelAdmin):
         'wra_filenumber',
     )
     autocomplete_fields = ['person',]
+    readonly_fields = ('timestamp',)
     fieldsets = (
         (None, {'fields': (
-            'person',
+            ('person', 'timestamp'),
             'wra_record_id',
             'facility',
             ('lastname', 'firstname', 'middleinitial'),
@@ -196,9 +198,10 @@ class PersonAdmin(admin.ModelAdmin):
         'preferred_name',
     )
     inlines = [PersonFacilityInline, FarRecordInline, WraRecordInline,]
+    readonly_fields = ('timestamp',)
     fieldsets = (
         (None, {'fields': (
-            'nr_id',
+            ('nr_id', 'timestamp'),
             ('family_name', 'given_name'),
             'given_name_alt',
             'other_names',
