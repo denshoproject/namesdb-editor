@@ -240,9 +240,9 @@ class WraRecordInline(admin.TabularInline):
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 'family_name', 'given_name', 'preferred_name', 'gender', 'birth_date',
+        'nr_id', 'family_name', 'given_name', 'preferred_name', 'gender', 'birth_date',
     )
-    list_display_links = ('id', 'family_name', 'given_name',)
+    list_display_links = ('nr_id', 'family_name', 'given_name',)
     list_filter = (
         'gender', 'citizenship',
         'preexclusion_residence_state', 'postexclusion_residence_state',
