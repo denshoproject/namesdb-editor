@@ -95,6 +95,9 @@ class Person(models.Model):
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
         if getattr(self, 'user', None):
             username = getattr(self, 'user').username
+        # New NR ID if none exists
+        if not self.nr_id:
+            self.nr_id = self._make_nr_id(username)
         # get existing record
         try:
             old = Person.objects.get(nr_id=self.nr_id)
@@ -109,6 +112,16 @@ class Person(models.Model):
             username=username, note=note, diff=make_diff(old, self)
         )
         r.save()
+
+    def _make_nr_id(self, username):
+        """Generate a new unique ID
+        """
+        import hashlib
+        m = hashlib.sha256()
+        m.update(bytes('namesdb-editor', 'utf-8'))
+        m.update(bytes(username, 'utf-8'))
+        m.update(bytes(timezone.now().isoformat(), 'utf-8'))
+        return m.hexdigest()[:10]
 
     def revisions(self):
         return Revision.objects.filter(model='persopn', record_id=self.nr_id)

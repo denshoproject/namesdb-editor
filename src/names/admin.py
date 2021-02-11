@@ -255,7 +255,7 @@ class PersonAdmin(admin.ModelAdmin):
     inlines = [
         PersonFacilityInline, FarRecordInline, WraRecordInline, RevisionInline,
     ]
-    readonly_fields = ('timestamp',)
+    readonly_fields = ('nr_id', 'timestamp',)
     fieldsets = (
         (None, {'fields': (
             ('nr_id', 'timestamp'),
