@@ -6,6 +6,11 @@ from .models import FarRecord, WraRecord, Person, Facility, PersonFacility
 from .models import Revision
 
 
+admin.site.site_header = "Densho Names Registry Editor"
+admin.site.site_title = "Densho Names Registry Editor"
+#admin.site.index_title = "index title"
+
+
 @admin.register(Revision)
 class RevisionAdmin(admin.ModelAdmin):
     list_display = (
