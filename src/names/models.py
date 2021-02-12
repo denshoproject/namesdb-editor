@@ -5,6 +5,7 @@ import json
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
 
 from names import csvfile,fileio
@@ -90,6 +91,9 @@ class Person(models.Model):
         return '{} ({})'.format(
             self.preferred_name, self.nr_id
         )
+
+    def admin_url(self):
+         return reverse('admin:names_person_change', args=(self.id,))
 
     def save(self, username=None, *args, **kwargs):
         # request.user added to obj in names.admin.FarRecordAdmin.save_model

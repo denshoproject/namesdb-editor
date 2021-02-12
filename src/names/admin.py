@@ -1,3 +1,4 @@
+from django import forms
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 
@@ -72,6 +73,17 @@ class FacilityAdmin(admin.ModelAdmin):
     )
 
 
+class FarRecordAdminForm(forms.ModelForm):
+    """Adds link to Person in Person field help_text"""
+    def __init__(self, *args, **kwargs):
+        super(FarRecordAdminForm, self).__init__(*args, **kwargs)
+        person = self.instance.person
+        if person:
+            url = person.admin_url()
+            name = person.preferred_name
+            self.fields['person'].help_text = f'&#8618; <a href="{url}">{name}</a>'
+
+
 @admin.register(FarRecord)
 class FarRecordAdmin(admin.ModelAdmin):
     list_display = (
@@ -94,6 +106,7 @@ class FarRecordAdmin(admin.ModelAdmin):
     autocomplete_fields = ['person',]
     readonly_fields = ('timestamp',)
     inlines = (RevisionInline,)
+    form = FarRecordAdminForm
     fieldsets = (
         (None, {'fields': (
             ('person', 'timestamp'),
@@ -127,6 +140,17 @@ class FarRecordAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
+class WraRecordAdminForm(forms.ModelForm):
+    """Adds link to Person in Person field help_text"""
+    def __init__(self, *args, **kwargs):
+        super(WraRecordAdminForm, self).__init__(*args, **kwargs)
+        person = self.instance.person
+        if person:
+            url = person.admin_url()
+            name = person.preferred_name
+            self.fields['person'].help_text = f'&#8618; <a href="{url}">{name}</a>'
+
+
 @admin.register(WraRecord)
 class WraRecordAdmin(admin.ModelAdmin):
     list_display = (
@@ -149,6 +173,7 @@ class WraRecordAdmin(admin.ModelAdmin):
     autocomplete_fields = ['person',]
     readonly_fields = ('timestamp',)
     inlines = (RevisionInline,)
+    form = WraRecordAdminForm
     fieldsets = (
         (None, {'fields': (
             ('person', 'timestamp'),
