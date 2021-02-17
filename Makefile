@@ -139,6 +139,11 @@ uninstall-app: uninstall-namesdb-editor uninstall-namesdb-public
 clean-app: clean-namesdb-editor clean-namesdb-public
 
 
+get-namesdb-editor:
+	@echo ""
+	@echo "get-namesdb-editor -----------------------------------------------------"
+	git pull
+
 install-namesdb-editor: install-virtualenv install-setuptools
 	@echo ""
 	@echo "namesdb-editor --------------------------------------------------------------"
@@ -174,8 +179,12 @@ uninstall-namesdb-editor:
 	-pip uninstall -r $(INSTALLDIR)/requirements.txt
 
 clean-namesdb-editor:
-	-rm -Rf $(INSTALLDIR)/psms/env/
-	-rm -Rf $(INSTALLDIR)/psms/src
+	-rm -Rf $(INSTALLDIR)/venv/
+	-rm -Rf $(APPDIR)/editor/__pycache__
+	-rm -Rf $(APPDIR)/names/__pycache__
+	-rm -Rf $(APPDIR)/build
+	-rm -Rf $(APPDIR)/*.egg-info
+	-rm -Rf $(APPDIR)/dist
 
 
 get-namesdb-public:

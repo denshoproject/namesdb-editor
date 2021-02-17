@@ -2,11 +2,12 @@
 *.pyc
 *.deb
 *~
-namesdb-editor/settings.py
 pip-log.txt
+build/
 db/
-media
+dist/
+*.egg-info/
+media/
 namesdb-public/
 namesdb_public
-build
 venv/
