@@ -89,6 +89,7 @@ INSTALLED_APPS = [
     #
     'editor',
     'names',
+    'namesdb_public',
 ]
 
 TEMPLATES = [

@@ -2,8 +2,12 @@ PROJECT=namesdb-editor
 USER=ddr
 SHELL = /bin/bash
 
+SRC_REPO_EDITOR=https://github.com/denshoproject/namesdb-editor
+SRC_REPO_PUBLIC=https://github.com/denshoproject/namesdb-public.git
+
 INSTALL_BASE=/opt
 INSTALLDIR=$(INSTALL_BASE)/namesdb-editor
+INSTALL_PUBLIC=$(INSTALLDIR)/namesdb-public
 APPDIR=$(INSTALLDIR)/src
 REQUIREMENTS=$(INSTALLDIR)/requirements.txt
 PIP_CACHE_DIR=$(INSTALL_BASE)/pip-cache
@@ -126,11 +130,13 @@ install-setuptools: install-virtualenv
 	pip install -U bpython setuptools
 
 
-install-app: install-namesdb-editor
+get-app: get-names-editor get-names-public
 
-uninstall-app: uninstall-namesdb-editor
+install-app: install-namesdb-editor install-namesdb-public
 
-clean-app: clean-namesdb-editor
+uninstall-app: uninstall-namesdb-editor uninstall-namesdb-public
+
+clean-app: clean-namesdb-editor clean-namesdb-public
 
 
 install-namesdb-editor: install-virtualenv install-setuptools
@@ -170,6 +176,28 @@ uninstall-namesdb-editor:
 clean-namesdb-editor:
 	-rm -Rf $(INSTALLDIR)/psms/env/
 	-rm -Rf $(INSTALLDIR)/psms/src
+
+
+get-namesdb-public:
+	@echo ""
+	@echo "get-names-public -------------------------------------------------------"
+	git status | grep "On branch"
+	if test -d $(INSTALL_PUBLIC); \
+	then cd $(INSTALL_PUBLIC) && git pull; \
+	else cd $(INSTALLDIR) && git clone $(SRC_REPO_PUBLIC); \
+	fi
+
+install-namesdb-public: install-virtualenv
+	-rm -Rf $(APPDIR)/namesdb_public
+	ln -s $(INSTALL_PUBLIC)/namesdb_public $(APPDIR)/namesdb_public
+
+uninstall-namesdb-public: install-virtualenv
+
+clean-namesdb-public:
+	-rm -Rf $(INSTALL_PUBLIC)/build
+	-rm -Rf $(INSTALL_PUBLIC)/namesdb.egg-info
+	-rm -Rf $(INSTALL_PUBLIC)/dist
+
 
 clean-pip:
 	-rm -Rf $(PIP_CACHE_DIR)/*

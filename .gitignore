@@ -6,5 +6,7 @@ namesdb-editor/settings.py
 pip-log.txt
 db/
 media
+namesdb-public/
+namesdb_public
 build
 venv/

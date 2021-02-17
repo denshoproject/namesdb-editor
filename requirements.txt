@@ -3,6 +3,8 @@
 Click
 django
 django-rest-framework
+elasticsearch>=7.0.0,<8.0.0     # NOTE: match ddrpublic version
+elasticsearch-dsl>=7.0.0,<8.0.0 # NOTE: match ddrpublic version
 python-dateutil
 
 bpython
