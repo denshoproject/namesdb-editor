@@ -139,6 +139,8 @@ install-namesdb-editor: install-virtualenv install-setuptools
 	apt-get --assume-yes install imagemagick libjpeg-dev libmariadbclient-dev libxml2 libxslt1.1 libxslt1-dev
 	source $(VIRTUALENV)/bin/activate; \
 	pip install -U -r $(INSTALLDIR)/requirements.txt
+	source $(VIRTUALENV)/bin/activate; \
+	cd $(APPDIR)/ && python setup.py install
 # logs dir
 	-mkdir $(LOG_BASE)
 	chown -R ddr.root $(LOG_BASE)
@@ -155,6 +157,10 @@ install-namesdb-editor: install-virtualenv install-setuptools
 	-mkdir -p $(MEDIA_ROOT)
 	chown -R ddr.root $(MEDIA_BASE)
 	chmod -R 755 $(MEDIA_BASE)
+
+setup-names-editor:
+	source $(VIRTUALENV)/bin/activate; \
+	cd $(APPDIR)/ && python setup.py install
 
 uninstall-namesdb-editor:
 	cd $(APPDIR)

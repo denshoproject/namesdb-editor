@@ -17,8 +17,11 @@ import sys
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-with open(BASE_DIR / '..' / 'VERSION', 'r') as f:
-    VERSION = f.read()
+try:
+    with open(BASE_DIR / '..' / 'VERSION', 'r') as f:
+        VERSION = f.read()
+except FileNotFoundError:
+    VERSION = 'unknown'
 
 # User-configurable settings are located in the following files.
 # Files appearing *later* in the list override earlier files.
