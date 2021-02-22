@@ -9,6 +9,26 @@ from django.urls import reverse
 from django.utils import timezone
 
 from names import csvfile,fileio
+from namesdb_public.models import Person as ESPerson, FIELDS_PERSON
+from namesdb_public.models import FarRecord as ESFarRecord, FIELDS_FARRECORD
+from namesdb_public.models import WraRecord as ESWraRecord, FIELDS_WRARECORD
+from namesdb_public.models import FIELDS_BY_MODEL
+
+ELASTICSEARCH_CLASSES = {
+    'all': [
+        {'doctype': 'person', 'class': ESPerson},
+        {'doctype': 'farrecord', 'class': ESFarRecord},
+        {'doctype': 'far',       'class': ESFarRecord},
+        {'doctype': 'wrarecord', 'class': ESWraRecord},
+        {'doctype': 'wra',       'class': ESWraRecord},
+    ]
+}
+
+ELASTICSEARCH_CLASSES_BY_MODEL = {
+    'person': ESPerson,
+    'farrecord': ESFarRecord, 'far': ESFarRecord,
+    'wrarecord': ESWraRecord, 'wra': ESWraRecord,
+}
 
 
 class NamesRouter:
@@ -387,3 +407,10 @@ def load_facilities(csv_path):
         for d in dicts
     ]
     return facilities
+
+
+MODEL_CLASSES = {
+    'person': Person,
+    'farrecord': FarRecord, 'far': FarRecord,
+    'wrarecord': WraRecord, 'wra': WraRecord,
+}

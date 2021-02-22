@@ -5,29 +5,10 @@ import sys
 from elasticsearch import Elasticsearch, TransportError
 import elasticsearch_dsl
 
-from .models import FarRecord as SQLFarRecord
-from .models import WraRecord as SQLWraRecord
-from .models import Person as SQLPerson
-from namesdb_public.models import FarRecord as ESFarRecord
-from namesdb_public.models import WraRecord as ESWraRecord
-from namesdb_public.models import Person as ESPerson
+from . import models
 
 DOCSTORE_TIMEOUT = 5
 INDEX_PREFIX = 'names'
-
-ELASTICSEARCH_CLASSES = {
-    'all': [
-        {'doctype': 'farrecord', 'class': ESFarRecord},
-        {'doctype': 'wrarecord', 'class': ESWraRecord},
-        {'doctype': 'person', 'class': ESPerson},
-    ]
-}
-
-ELASTICSEARCH_CLASSES_BY_MODEL = {
-    'farrecord': ESFarRecord,
-    'wrarecord': ESWraRecord,
-    'person': ESPerson,
-}
 
 
 class Docstore():
@@ -103,7 +84,7 @@ class Docstore():
         """
         self.health()
         statuses = []
-        for i in ELASTICSEARCH_CLASSES['all']:
+        for i in models.ELASTICSEARCH_CLASSES['all']:
             status = self.create_index(
                 self.index_name(i['doctype']),
                 i['class']
@@ -150,7 +131,7 @@ class Docstore():
         """
         self.health()
         statuses = []
-        for i in ELASTICSEARCH_CLASSES['all']:
+        for i in models.ELASTICSEARCH_CLASSES['all']:
             status = self.delete_index(
                 self.index_name(i['doctype'])
             )
