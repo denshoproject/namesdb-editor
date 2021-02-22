@@ -76,7 +76,7 @@ class Person(models.Model):
 #    record_id		blank=1	Record ID	ID of related record
 #    record_type		blank=1	Record Source	Type of related record. e.g., 'far', 'wra' 
     timestamp                     = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
-    facility = models.ManyToManyField(Facility, through='PersonFacility')
+    facility = models.ManyToManyField(Facility, through='PersonFacility',  related_name='facilities')
 
     class Meta:
         verbose_name = 'Person'
