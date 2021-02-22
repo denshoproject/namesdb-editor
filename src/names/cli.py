@@ -13,6 +13,9 @@ Sample usage:
     # Check status
     $ namesdb status -H localhost:9200
 
+    # Publish records to Elasticsearch
+    $ namesdb post -H localhost:9200 /tmp/namesdb-data/far-manzanar.csv
+
 Note: You can set environment variables for HOSTS and INDEX.:
 
     $ export ES_HOSTS=localhost:9200
@@ -118,6 +121,20 @@ def status(hosts):
     index_names = ds.es.indices.stats()['indices'].keys()
     for i in index_names:
         print('- %s' % i)
+
+@namesdb.command()
+@click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
+@click.option('--model','-m', help='Model to publish: person, far, wra')
+@click.option('--limit','-l', help='Limit number of records.')
+@click.option('--debug','-d', is_flag=True, default=False)
+def post(hosts, model, limit, debug):
+    """Publish data from SQL database to Elasticsearch.
+    """
+    hosts = hosts_index(hosts)
+    ds = docstore.Docstore(hosts)
+    if limit:
+        limit = int(limit)
+    publish.post_records(ds, model, limit=limit, debug=debug)
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)

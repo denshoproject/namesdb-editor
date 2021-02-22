@@ -150,6 +150,44 @@ class Person(models.Model):
     def revisions(self):
         return Revision.objects.filter(model='persopn', record_id=self.nr_id)
 
+    def dict(self, facilities={}, far_wra_records={}):
+        """JSON-serializable dict
+        
+        @param facilities: dict nr_id: [{'id':...,'type':...,'name':...}]
+        @param far_wra_records: dict nr_id: []
+        """
+        d = {'id': self.nr_id}
+        for fieldname in FIELDS_PERSON:
+            if fieldname in ['facility', 'facilities']:
+                if facilities:
+                    # TODO
+                    pass
+                else:
+                    value = [
+                        {
+                            'id': ffacility_id,
+                            'type': f.facility_type,
+                            'name': f.facility_name,
+                        }
+                        for f in self.facility.through.objects.all()
+                    ]
+            else:
+                value = getattr(self, fieldname, '')
+            d[fieldname] = value
+        if far_wra_records:
+            # TODO
+            pass
+        else:
+            d['farrecords'] = [
+                r.far_record_id
+                for r in FarRecord.objects.filter(person=self)
+            ]
+            d['wrarecords'] = [
+                r.wra_record_id
+                for r in WraRecord.objects.filter(person=self)
+            ]
+        return d
+
 
 class PersonFacility(models.Model):
     person     = models.ForeignKey(Person, on_delete=models.DO_NOTHING)
@@ -230,6 +268,26 @@ class FarRecord(models.Model):
     def revisions(self):
         return Revision.objects.filter(model='far', record_id=self.far_record_id)
 
+    def dict(self, persons={}):
+        """JSON-serializable dict
+        
+        @param persons: dict of person_id: {'id':..., 'name':...}
+        """
+        d = {'id': self.far_record_id}
+        for fieldname in FIELDS_FARRECORD:
+            if fieldname == 'person':
+                value = None
+                if persons:
+                    p = persons[self.person_id]
+                else:
+                    p = self.person
+                if p:
+                    value = {'id': p.nr_id, 'name': p.preferred_name,}
+            else:
+                value = str(getattr(self, fieldname, ''))
+            d[fieldname] = value
+        return d
+
 
 class WraRecord(models.Model):
     wra_record_id     = models.IntegerField(primary_key=1,        verbose_name='WRA Form 26 ID', help_text='Unique identifier; absolute row in original RG210.JAPAN.WRA26 datafile')
@@ -307,6 +365,26 @@ class WraRecord(models.Model):
         return Revision.objects.filter(
             model='wra', record_id=self.wra_record_id
         )
+
+    def dict(self, persons={}):
+        """JSON-serializable dict
+        
+        @param persons: dict of person_id: {'id':..., 'name':...}
+        """
+        d = {'id': self.wra_record_id}
+        for fieldname in FIELDS_WRARECORD:
+            if fieldname == 'person':
+                value = None
+                if persons:
+                    p = persons[self.person_id]
+                else:
+                    p = self.person
+                if p:
+                    value = {'id': p.nr_id, 'name': p.preferred_name,}
+            else:
+                value = str(getattr(self, fieldname, ''))
+            d[fieldname] = value
+        return d
 
 
 class Revision(models.Model):
