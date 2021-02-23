@@ -2,7 +2,7 @@ import logging
 logger = logging.getLogger(__name__)
 import sys
 
-from elasticsearch import Elasticsearch, TransportError
+from elasticsearch import Elasticsearch, TransportError, NotFoundError
 import elasticsearch_dsl
 
 from . import models

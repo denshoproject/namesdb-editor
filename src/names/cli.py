@@ -21,6 +21,9 @@ Sample usage:
     
     # Get record JSON from Elasticsearch
     $ namesdb get -H localhost:9200 person 0a1b2c3d4e
+    
+    # Delete records from Elasticsearch
+    $ namesdb delete -H localhost:9200 person 0a1b2c3d4e
 
 Note: You can set environment variables for HOSTS and INDEX.:
 
@@ -177,6 +180,22 @@ def get(hosts, json, model, record_id):
         es_class = models_public.ELASTICSEARCH_CLASSES_BY_MODEL[model]
         record = es_class.get(id=record_id, using=ds.es)
         click.echo(record)
+
+@namesdb.command()
+@click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
+@click.argument('model')
+@click.argument('record_id')
+def delete(hosts, model, record_id):
+    """Delete records in CSV file from Elasticsearch.
+    """
+    hosts = hosts_index(hosts)
+    ds = docstore.Docstore(hosts)
+    es_class = models_public.ELASTICSEARCH_CLASSES_BY_MODEL[model]
+    try:
+        record = es_class.get(id=record_id, using=ds.es)
+        result = record.delete(using=ds.es)
+    except docstore.NotFoundError as err:
+        click.echo(err)
     
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
