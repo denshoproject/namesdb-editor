@@ -15,6 +15,12 @@ Sample usage:
 
     # Publish records to Elasticsearch
     $ namesdb post -H localhost:9200 /tmp/namesdb-data/far-manzanar.csv
+    
+    # Print Elasticsearch URL for record
+    $ namesdb url -H localhost:9200 person 0a1b2c3d4e
+    
+    # Get record JSON from Elasticsearch
+    $ namesdb get -H localhost:9200 person 0a1b2c3d4e
 
 Note: You can set environment variables for HOSTS and INDEX.:
 
@@ -35,9 +41,11 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'editor.settings')
 import django
 django.setup()
 from django.conf import settings
+import requests
 
 from . import docstore
 from . import publish
+from namesdb_public import models as models_public
 
 
 @click.group()
@@ -136,6 +144,40 @@ def post(hosts, model, limit, debug):
         limit = int(limit)
     publish.post_records(ds, model, limit=limit, debug=debug)
 
+def _make_record_url(hosts, model, record_id):
+    return f'http://{hosts}/{models_public.PREFIX}{model}/_doc/{record_id}'
+
+@namesdb.command()
+@click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
+@click.argument('model')
+@click.argument('record_id')
+def url(hosts, model, record_id):
+    """URL of the specified Elasticsearch record
+    """
+    click.echo(_make_record_url(hosts, model, record_id))
+
+@namesdb.command()
+@click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
+@click.option('--json','-j', is_flag=True, default=False)
+@click.argument('model')
+@click.argument('record_id')
+def get(hosts, json, model, record_id):
+    """Get specified Elasticsearch record JSON
+    """
+    if json:
+        url = _make_record_url(hosts, model, record_id)
+        r = requests.get(url)
+        if r.status_code == 200:
+            click.echo(r.text)
+        else:
+            click.echo(f'{r.status_code} {r.reason}')
+    else:
+        hosts = hosts_index(hosts)
+        ds = docstore.Docstore(hosts)
+        es_class = models_public.ELASTICSEARCH_CLASSES_BY_MODEL[model]
+        record = es_class.get(id=record_id, using=ds.es)
+        click.echo(record)
+    
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
 def export(debug):
