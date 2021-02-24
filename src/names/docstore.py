@@ -4,6 +4,7 @@ import sys
 
 from elasticsearch import Elasticsearch, TransportError, NotFoundError
 import elasticsearch_dsl
+logging.getLogger("elasticsearch").setLevel(logging.WARNING)
 
 from . import models
 
