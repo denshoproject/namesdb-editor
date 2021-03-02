@@ -2,6 +2,8 @@ from collections import OrderedDict
 import logging
 from typing import Any, Dict, List, Match, Optional, Set, Tuple, Union
 
+from tqdm import tqdm
+
 
 def make_row_dict(headers: List[str], row: List[str]) -> OrderedDict:
     """Turns CSV row into a dict with the headers as keys
@@ -32,12 +34,16 @@ def make_rowds(
     headers = [_strip_str(data) for data in rows.pop(0)]
     rowds = []
     errors = []
-    for row in rows[row_start:row_end]:
+    for row in tqdm(
+            rows[row_start:row_end],
+            desc='Reading CSV', ascii=True, unit='rows'
+    ):
         try:
-            yield make_row_dict(headers, row)
+            rowds.append(make_row_dict(headers, row))
         except Exception as err:
             msg = 'row %s: %s' % (n, str(err))
             logging.error(msg)
+    return rowds
     
 def make_rows(rowds: List[Dict[str,str]]) -> Tuple[List[str], List[List[str]]]:
     """Takes list of rowds (dicts) and turns into list of rows (for writing CSV)

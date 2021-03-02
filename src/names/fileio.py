@@ -25,7 +25,7 @@ def csv_reader(csvfile):
     )
     return reader
 
-def read_csv(path: str) -> List[Dict[str,str]]:
+def read_csv(path: str, limit: Optional[int]=None) -> List[Dict[str,str]]:
     """Read specified file, returns list of rows.
     
     >>> path = '/tmp/batch-test_write_csv.csv'
@@ -47,6 +47,8 @@ def read_csv(path: str) -> List[Dict[str,str]]:
     rows = []
     with open(path, 'r') as f:
         reader = csv_reader(f)
-        for row in reader:
+        for n,row in enumerate(reader):
+            if limit and n > limit:
+                break
             rows.append(row)
     return rows

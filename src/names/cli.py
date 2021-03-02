@@ -3,6 +3,9 @@ DESCRIPTION = """"""
 HELP = """
 Sample usage:
 
+    # Import data from CSV
+    $ namesdb import far far-records.csv
+
     # Export data without Django-specific tables
     $ namesdb export
 
@@ -45,8 +48,10 @@ import django
 django.setup()
 from django.conf import settings
 import requests
+from tqdm import tqdm
 
 from . import docstore
+from . import models
 from . import publish
 from namesdb_public import models as models_public
 
@@ -67,6 +72,24 @@ def help():
     """Detailed help and usage examples
     """
     click.echo(HELP)
+
+@namesdb.command()
+@click.option('--debug','-d', is_flag=True, default=False)
+@click.option('--limit','-l', default=None)
+@click.argument('model')
+@click.argument('csv_path')
+@click.argument('username')
+def load(debug, limit, model, csv_path, username):
+    """Load data from a CSV file
+    """
+    if limit:
+        limit = int(limit)
+    sql_class = models.MODEL_CLASSES[model]
+    for rowd in tqdm(
+            models.load_csv(csv_path, limit),
+            desc='Writing database', ascii=True, unit='record'
+    ):
+        models.save_rowd(rowd, sql_class, username)
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')

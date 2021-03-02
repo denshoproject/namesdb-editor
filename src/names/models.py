@@ -437,30 +437,26 @@ def make_diff(old, new):
     ]).replace('\n\n', '\n')
 
 
-def load_csv(class_, csv_path, username, num_records=None):
+def load_csv(csv_path, limit=None):
+    return csvfile.make_rowds(fileio.read_csv(csv_path, limit))
+    
+def save_rowd(rowd, class_, username):
     """Load records from CSV
     """
-    start = timezone.now()
-    for n,rowd in enumerate(csvfile.make_rowds(fileio.read_csv(csv_path))):
-        if num_records and (n > num_records):
-            break
-        record = class_()
-        try:
-            idkey = 'far_record_id'
-            x = rowd[idkey]
-        except:
-            idkey = 'wra_record_id'
-        print(n,rowd[idkey])
-        for key,val in rowd.items():
-            if val:
-                if isinstance(val, str):
-                    val = val.replace('00:00:00', '')
-                    val = val.strip()
-                setattr(record, key, val)
-        record.save(username=username, note='CSV import')
-    elapsed = timezone.now() - start
-    return n,elapsed
-
+    record = class_()
+    try:
+        idkey = 'far_record_id'
+        x = rowd[idkey]
+    except:
+        idkey = 'wra_record_id'
+    #print(n,rowd[idkey])
+    for key,val in rowd.items():
+        if val:
+            if isinstance(val, str):
+                val = val.replace('00:00:00', '')
+                val = val.strip()
+            setattr(record, key, val)
+    record.save(username=username, note='CSV import')
 
 def load_facilities(csv_path):
     unique = list(set([
