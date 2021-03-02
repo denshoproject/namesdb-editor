@@ -18,16 +18,14 @@ ELASTICSEARCH_CLASSES = {
     'all': [
         {'doctype': 'person', 'class': ESPerson},
         {'doctype': 'farrecord', 'class': ESFarRecord},
-        {'doctype': 'far',       'class': ESFarRecord},
         {'doctype': 'wrarecord', 'class': ESWraRecord},
-        {'doctype': 'wra',       'class': ESWraRecord},
     ]
 }
 
 ELASTICSEARCH_CLASSES_BY_MODEL = {
     'person': ESPerson,
-    'farrecord': ESFarRecord, 'far': ESFarRecord,
-    'wrarecord': ESWraRecord, 'wra': ESWraRecord,
+    'farrecord': ESFarRecord,
+    'wrarecord': ESWraRecord,
 }
 
 
@@ -489,6 +487,6 @@ def load_facilities(csv_path):
 
 MODEL_CLASSES = {
     'person': Person,
-    'farrecord': FarRecord, 'far': FarRecord,
-    'wrarecord': WraRecord, 'wra': WraRecord,
+    'farrecord': FarRecord,
+    'wrarecord': WraRecord,
 }

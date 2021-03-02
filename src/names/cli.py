@@ -141,6 +141,7 @@ def status(hosts):
 def post(hosts, model, limit, debug):
     """Publish data from SQL database to Elasticsearch.
     """
+    model = model_w_abbreviations(model)
     hosts = hosts_index(hosts)
     ds = docstore.Docstore(hosts)
     if limit:
@@ -167,6 +168,7 @@ def url(hosts, model, record_id):
 def get(hosts, json, model, record_id):
     """Get specified Elasticsearch record JSON
     """
+    model = model_w_abbreviations(model)
     if json:
         url = _make_record_url(hosts, model, record_id)
         r = requests.get(url)
@@ -188,6 +190,7 @@ def get(hosts, json, model, record_id):
 def delete(hosts, model, record_id):
     """Delete records in CSV file from Elasticsearch.
     """
+    model = model_w_abbreviations(model)
     hosts = hosts_index(hosts)
     ds = docstore.Docstore(hosts)
     es_class = models_public.ELASTICSEARCH_CLASSES_BY_MODEL[model]
@@ -229,3 +232,9 @@ def export(debug):
     # clean up
     c.close()
     click.echo(dst)
+
+def model_w_abbreviations(model):
+    if model in ['far','wra']:
+        # enable using 'far','wra' abbreviations
+        model = f'{model}record'
+    return model
