@@ -169,7 +169,13 @@ def post(hosts, model, limit, debug):
     ds = docstore.Docstore(hosts)
     if limit:
         limit = int(limit)
-    publish.post_records(ds, model, limit=limit, debug=debug)
+    
+    click.echo('Loading from database')
+    records,es_class = publish.get_records(ds, model, limit, debug)
+    for record in tqdm(
+        records, desc='Writing to Elasticsearch', ascii=True, unit='record'
+    ):
+        publish.post_record(model, record, es_class, ds)
 
 def _make_record_url(hosts, model, record_id):
     return f'http://{hosts}/{models_public.PREFIX}{model}/_doc/{record_id}'
