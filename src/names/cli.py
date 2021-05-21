@@ -31,7 +31,6 @@ Sample usage:
 Note: You can set environment variables for HOSTS and INDEX.:
 
     $ export ES_HOSTS=localhost:9200
-    $ export ES_INDEX=namesdb-dev
 
 """
 
