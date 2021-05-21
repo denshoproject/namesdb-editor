@@ -157,24 +157,39 @@ def status(hosts):
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
-@click.option('--model','-m', help='Model to publish: person, far, wra')
 @click.option('--limit','-l', help='Limit number of records.')
 @click.option('--debug','-d', is_flag=True, default=False)
-def post(hosts, model, limit, debug):
+@click.argument('model')
+def post(hosts, limit, debug, model):
     """Publish data from SQL database to Elasticsearch.
     """
-    model = model_w_abbreviations(model)
+    model = model_w_abbreviations(model.lower().strip())
     hosts = hosts_index(hosts)
     ds = docstore.Docstore(hosts)
     if limit:
         limit = int(limit)
     
+    click.echo('Gathering relations')
+    related = {}
+    if model == 'person':
+        related['facilities'] = models.Person.related_facilities()
+        related['far_records'] = models.Person.related_farrecords()
+        related['wra_records'] = models.Person.related_wrarecords()
+    elif model in ['farrecord', 'far']:
+        related['persons'] = models.FarRecord.related_persons()
+    elif model in ['wrarecord', 'wra']:
+        related['persons'] = models.WraRecord.related_persons()
+    
     click.echo('Loading from database')
-    records,es_class = publish.get_records(ds, model, limit, debug)
+    sql_class = models.MODEL_CLASSES[model]
+    if limit:
+        records = sql_class.objects.all()[:limit]
+    else:
+        records = sql_class.objects.all()
     for record in tqdm(
         records, desc='Writing to Elasticsearch', ascii=True, unit='record'
     ):
-        publish.post_record(model, record, es_class, ds)
+        record.post(related, ds)
 
 def _make_record_url(hosts, model, record_id):
     return f'http://{hosts}/{models_public.PREFIX}{model}/_doc/{record_id}'
@@ -227,7 +242,7 @@ def delete(hosts, model, record_id):
         result = record.delete(using=ds.es)
     except docstore.NotFoundError as err:
         click.echo(err)
-    
+
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
 def export(debug):
