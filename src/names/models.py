@@ -65,9 +65,9 @@ class Facility(models.Model):
 
 
 class Person(models.Model):
-    nr_id                         = models.CharField(max_length=30,          verbose_name='Names Registry ID',         help_text='Names Registry unique identifier')
-    family_name                   = models.CharField(max_length=30,          verbose_name='Last Name',                 help_text='Preferred family or last name')
-    given_name                    = models.CharField(max_length=30,          verbose_name='First Name',                help_text='Preferred given or first name')
+    nr_id                         = models.CharField(max_length=30, primary_key=True,      verbose_name='Names Registry ID',         help_text='Names Registry unique identifier')
+    family_name                   = models.CharField(max_length=30,                        verbose_name='Last Name',                 help_text='Preferred family or last name')
+    given_name                    = models.CharField(max_length=30,                        verbose_name='First Name',                help_text='Preferred given or first name')
     given_name_alt                = models.TextField(max_length=30, blank=True, null=True, verbose_name='Alternative First Names',   help_text='List of alternative first names')
     other_names                   = models.TextField(max_length=30, blank=True, null=True, verbose_name='Other Names',               help_text='List of other names')
     middle_name                   = models.CharField(max_length=30, blank=True, null=True, verbose_name='Middle Name',               help_text='Middle name or initial')
@@ -262,7 +262,7 @@ class PersonFacility(models.Model):
 
 
 class FarRecord(models.Model):
-    far_record_id                  = models.CharField(max_length=255, primary_key=1, verbose_name='FAR Record ID', help_text="Derived from FAR ledger id + line id ('original_order')")
+    far_record_id           = models.CharField(max_length=255, primary_key=1, verbose_name='FAR Record ID', help_text="Derived from FAR ledger id + line id ('original_order')")
     facility                = models.CharField(max_length=255,          verbose_name='Facility', help_text='Identifier of WRA facility')
     original_order          = models.CharField(max_length=255, blank=1, verbose_name='Original Order', help_text='Absolute line number in physical FAR ledger')
     family_number           = models.CharField(max_length=255, blank=1, verbose_name='WRA Family Number', help_text='WRA-assigned family number')
