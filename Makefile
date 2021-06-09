@@ -26,6 +26,8 @@ MEDIA_BASE=/var/www/namesdb-editor
 MEDIA_ROOT=$(MEDIA_BASE)/media
 STATIC_ROOT=$(MEDIA_BASE)/static
 
+SUPERVISOR_GUNICORN_CONF=/etc/supervisor/conf.d/namesdbeditor.conf
+
 
 .PHONY: help
 
@@ -243,13 +245,8 @@ uninstall-configs:
 install-daemons-configs:
 	@echo ""
 	@echo "configuring daemons -------------------------------------------------"
-# nginx
-	cp $(INSTALLDIR)/conf/namesdb-editor.conf $(NGINX_APP_CONF)
-	chown root.root $(NGINX_APP_CONF)
-	chmod 644 $(NGINX_APP_CONF)
-	-ln -s $(NGINX_APP_CONF) $(NGINX_APP_CONF_LINK)
 # supervisord
-	cp $(INSTALLDIR)/conf/gunicorn_namesdb.conf $(SUPERVISOR_GUNICORN_CONF)
+	cp $(INSTALLDIR)/conf/supervisor.conf $(SUPERVISOR_GUNICORN_CONF)
 	chown root.root $(SUPERVISOR_GUNICORN_CONF)
 	chmod 644 $(SUPERVISOR_GUNICORN_CONF)
 
