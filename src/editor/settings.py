@@ -56,6 +56,8 @@ DATABASES = {
 
 DATABASE_ROUTERS = ['names.models.NamesRouter']
 
+DOCSTORE_HOSTS = config.get('database', 'namesdb_host')
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 STATIC_ROOT = config.get('media', 'static_root')
@@ -144,3 +146,5 @@ LANGUAGE_CODE = 'en-us'
 USE_I18N = False
 USE_L10N = False
 USE_TZ = True
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

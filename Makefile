@@ -173,6 +173,14 @@ setup-names-editor:
 	source $(VIRTUALENV)/bin/activate; \
 	cd $(APPDIR)/ && python setup.py install
 
+shell:
+	source $(VIRTUALENV)/bin/activate; \
+	python src/manage.py shell
+
+runserver:
+	source $(VIRTUALENV)/bin/activate; \
+	python src/manage.py runserver 0.0.0.0:8000
+
 uninstall-namesdb-editor:
 	cd $(APPDIR)
 	source $(VIRTUALENV)/bin/activate; \

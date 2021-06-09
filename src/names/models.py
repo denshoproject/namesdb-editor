@@ -4,7 +4,7 @@ import json
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
+from django.db import connections, models
 from django.urls import reverse
 from django.utils import timezone
 
@@ -65,9 +65,9 @@ class Facility(models.Model):
 
 
 class Person(models.Model):
-    nr_id                         = models.CharField(max_length=30,          verbose_name='Names Registry ID',         help_text='Names Registry unique identifier')
-    family_name                   = models.CharField(max_length=30,          verbose_name='Last Name',                 help_text='Preferred family or last name')
-    given_name                    = models.CharField(max_length=30,          verbose_name='First Name',                help_text='Preferred given or first name')
+    nr_id                         = models.CharField(max_length=30, primary_key=True,      verbose_name='Names Registry ID',         help_text='Names Registry unique identifier')
+    family_name                   = models.CharField(max_length=30,                        verbose_name='Last Name',                 help_text='Preferred family or last name')
+    given_name                    = models.CharField(max_length=30,                        verbose_name='First Name',                help_text='Preferred given or first name')
     given_name_alt                = models.TextField(max_length=30, blank=True, null=True, verbose_name='Alternative First Names',   help_text='List of alternative first names')
     other_names                   = models.TextField(max_length=30, blank=True, null=True, verbose_name='Other Names',               help_text='List of other names')
     middle_name                   = models.CharField(max_length=30, blank=True, null=True, verbose_name='Middle Name',               help_text='Middle name or initial')
@@ -95,7 +95,7 @@ class Person(models.Model):
 #    record_type		blank=1	Record Source	Type of related record. e.g., 'far', 'wra' 
     timestamp                     = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
     facility = models.ManyToManyField(Facility, through='PersonFacility',  related_name='facilities')
-
+    
     class Meta:
         verbose_name = 'Person'
         verbose_name_plural = 'People'
@@ -148,43 +148,110 @@ class Person(models.Model):
     def revisions(self):
         return Revision.objects.filter(model='persopn', record_id=self.nr_id)
 
-    def dict(self, facilities={}, far_wra_records={}):
+    @staticmethod
+    def related_facilities():
+        """Build dict of Person->Facility relations
+        """
+        query = """
+            SELECT names_person.nr_id,
+                names_personfacility.facility_id,
+                names_personfacility.entry_date, names_personfacility.exit_date
+            FROM names_person INNER JOIN names_personfacility
+                ON names_person.id = names_personfacility.person_id;
+        """
+        x = {}
+        with connections['names'].cursor() as cursor:
+            cursor.execute(query)
+            for nr_id, facility_id, entry_date, exit_date in cursor.fetchall():
+                if nr_id:
+                    if not x.get(nr_id):
+                        x[nr_id] = []
+                    x[nr_id].append({
+                        'facility_id': facility_id,
+                        'entry_date': entry_date,
+                        'exit_date': exit_date,
+                    })
+        return x
+
+    @staticmethod
+    def related_farrecords():
+        """Build dict of Person->FarRecord relations
+        """
+        query = """
+            SELECT names_person.nr_id,
+                   names_farrecord.far_record_id,
+                   names_farrecord.last_name, names_farrecord.first_name
+            FROM names_farrecord INNER JOIN names_person
+            ON names_farrecord.person_id = names_person.id;
+        """
+        x = {}
+        with connections['names'].cursor() as cursor:
+            cursor.execute(query)
+            for nr_id,far_record_id,last_name,first_name in cursor.fetchall():
+                if nr_id:
+                    if not x.get(nr_id):
+                        x[nr_id] = []
+                    x[nr_id].append({
+                        'far_record_id': far_record_id,
+                        'last_name': last_name,
+                        'first_name': first_name,
+                    })
+        return x
+
+    @staticmethod
+    def related_wrarecords():
+        """Build dict of Person->WraRecord relations
+        """
+        query = """
+            SELECT names_person.nr_id,
+                   names_wrarecord.wra_record_id,
+                   names_wrarecord.lastname, names_wrarecord.firstname
+            FROM names_wrarecord INNER JOIN names_person
+            ON names_wrarecord.person_id = names_person.id;
+        """
+        x = {}
+        with connections['names'].cursor() as cursor:
+            cursor.execute(query)
+            for nr_id,wra_record_id,lastname,firstname in cursor.fetchall():
+                if nr_id:
+                    if not x.get(nr_id):
+                        x[nr_id] = []
+                    x[nr_id].append({
+                        'wra_record_id': wra_record_id,
+                        'lastname': lastname,
+                        'firstname': firstname,
+                    })
+        return x
+
+    def dict(self, related):
         """JSON-serializable dict
-        
-        @param facilities: dict nr_id: [{'id':...,'type':...,'name':...}]
-        @param far_wra_records: dict nr_id: []
         """
         d = {'id': self.nr_id}
         for fieldname in FIELDS_PERSON:
-            if fieldname in ['facility', 'facilities']:
-                if facilities:
-                    # TODO
-                    pass
-                else:
-                    value = [
-                        {
-                            'id': ffacility_id,
-                            'type': f.facility_type,
-                            'name': f.facility_name,
-                        }
-                        for f in self.facility.through.objects.all()
-                    ]
+            value = None
+            if fieldname == 'facilities':
+                if related['facilities'].get(self.nr_id):
+                    value = related['facilities'][self.nr_id]
+            elif fieldname == 'far_records':
+                if related['far_records'].get(self.nr_id):
+                    value = related['far_records'][self.nr_id]
+            elif fieldname == 'wra_records':
+                if related['wra_records'].get(self.nr_id):
+                    value = related['wra_records'][self.nr_id]
             else:
-                value = getattr(self, fieldname, '')
+                if getattr(self, fieldname):
+                    value = getattr(self, fieldname)
             d[fieldname] = value
-        if far_wra_records:
-            # TODO
-            pass
-        else:
-            d['farrecords'] = [
-                r.far_record_id
-                for r in FarRecord.objects.filter(person=self)
-            ]
-            d['wrarecords'] = [
-                r.wra_record_id
-                for r in WraRecord.objects.filter(person=self)
-            ]
         return d
+
+    def post(self, related, ds):
+        """Post record to Elasticsearch
+        """
+        data = self.dict(related)
+        es_class = ELASTICSEARCH_CLASSES_BY_MODEL['person']
+        d = es_class.from_dict(data['id'], data)
+        result = d.save(index=ds.index_name('person'), using=ds.es)
+        return result
 
 
 class PersonFacility(models.Model):
@@ -195,7 +262,7 @@ class PersonFacility(models.Model):
 
 
 class FarRecord(models.Model):
-    far_record_id                  = models.CharField(max_length=255, primary_key=1, verbose_name='FAR Record ID', help_text="Derived from FAR ledger id + line id ('original_order')")
+    far_record_id           = models.CharField(max_length=255, primary_key=1, verbose_name='FAR Record ID', help_text="Derived from FAR ledger id + line id ('original_order')")
     facility                = models.CharField(max_length=255,          verbose_name='Facility', help_text='Identifier of WRA facility')
     original_order          = models.CharField(max_length=255, blank=1, verbose_name='Original Order', help_text='Absolute line number in physical FAR ledger')
     family_number           = models.CharField(max_length=255, blank=1, verbose_name='WRA Family Number', help_text='WRA-assigned family number')
@@ -266,25 +333,51 @@ class FarRecord(models.Model):
     def revisions(self):
         return Revision.objects.filter(model='far', record_id=self.far_record_id)
 
-    def dict(self, persons={}):
+    @staticmethod
+    def related_persons():
+        query = """
+            SELECT names_farrecord.far_record_id, names_person.nr_id,
+                   names_person.preferred_name
+            FROM names_farrecord
+            INNER JOIN names_person ON names_farrecord.person_id = names_person.id
+        """
+        with connections['names'].cursor() as cursor:
+            cursor.execute(query)
+            return {
+                far_record_id: {
+                    'nr_id': nr_id, 'preferred_name': preferred_name
+                }
+                for far_record_id,nr_id,preferred_name in cursor.fetchall()
+                if nr_id
+            }
+
+    def dict(self, related):
         """JSON-serializable dict
-        
-        @param persons: dict of person_id: {'id':..., 'name':...}
+        @param related: dict of person_id: {'id':..., 'name':...}
         """
         d = {'id': self.far_record_id}
         for fieldname in FIELDS_FARRECORD:
             if fieldname == 'person':
                 value = None
-                if persons:
-                    p = persons[self.person_id]
-                else:
-                    p = self.person
-                if p:
-                    value = {'id': p.nr_id, 'name': p.preferred_name,}
+                if related['persons'].get(self.far_record_id):
+                    person = related['persons'][self.far_record_id]
+                    value = {
+                        'id': person['nr_id'],
+                        'name': person['preferred_name'],
+                    }
             else:
                 value = str(getattr(self, fieldname, ''))
             d[fieldname] = value
         return d
+
+    def post(self, related, ds):
+        """Post record to Elasticsearch
+        """
+        data = self.dict(related)
+        es_class = ELASTICSEARCH_CLASSES_BY_MODEL['farrecord']
+        return es_class.from_dict(data['id'], data).save(
+            index=ds.index_name('farrecord'), using=ds.es
+        )
 
 
 class WraRecord(models.Model):
@@ -364,25 +457,50 @@ class WraRecord(models.Model):
             model='wra', record_id=self.wra_record_id
         )
 
-    def dict(self, persons={}):
+    @staticmethod
+    def related_persons():
+        query = """
+            SELECT names_wrarecord.wra_record_id, names_person.nr_id,
+                   names_person.preferred_name
+            FROM names_wrarecord
+            INNER JOIN names_person ON names_wrarecord.person_id = names_person.id
+        """
+        with connections['names'].cursor() as cursor:
+            cursor.execute(query)
+            return {
+                wra_record_id: {
+                    'nr_id': nr_id, 'preferred_name': preferred_name
+                }
+                for wra_record_id,nr_id,preferred_name in cursor.fetchall()
+                if nr_id
+            }
+
+    def dict(self, related):
         """JSON-serializable dict
-        
-        @param persons: dict of person_id: {'id':..., 'name':...}
         """
         d = {'id': self.wra_record_id}
         for fieldname in FIELDS_WRARECORD:
             if fieldname == 'person':
                 value = None
-                if persons:
-                    p = persons[self.person_id]
-                else:
-                    p = self.person
-                if p:
-                    value = {'id': p.nr_id, 'name': p.preferred_name,}
+                if related['persons'].get(self.wra_record_id):
+                    person = related['persons'][self.wra_record_id]
+                    value = {
+                        'id': person['nr_id'],
+                        'name': person['preferred_name'],
+                    }
             else:
                 value = str(getattr(self, fieldname, ''))
             d[fieldname] = value
         return d
+
+    def post(self, related, ds):
+        """Post record to Elasticsearch
+        """
+        data = self.dict(related)
+        es_class = ELASTICSEARCH_CLASSES_BY_MODEL['wrarecord']
+        return es_class.from_dict(data['id'], data).save(
+            index=ds.index_name('wrarecord'), using=ds.es
+        )
 
 
 class Revision(models.Model):
