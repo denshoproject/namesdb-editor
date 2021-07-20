@@ -8,7 +8,7 @@ from django.db import connections, models
 from django.urls import reverse
 from django.utils import timezone
 
-from names import csvfile,fileio
+from names import csvfile,fileio,noidminter
 from namesdb_public.models import Person as ESPerson, FIELDS_PERSON
 from namesdb_public.models import FarRecord as ESFarRecord, FIELDS_FARRECORD
 from namesdb_public.models import WraRecord as ESWraRecord, FIELDS_WRARECORD
@@ -119,7 +119,7 @@ class Person(models.Model):
             username = getattr(self, 'user').username
         # New NR ID if none exists
         if not self.nr_id:
-            self.nr_id = self._make_nr_id(username)
+            self.nr_id = self._get_noid()
         # get existing record
         try:
             old = Person.objects.get(nr_id=self.nr_id)
@@ -136,7 +136,7 @@ class Person(models.Model):
         r.save()
 
     def _make_nr_id(self, username):
-        """Generate a new unique ID
+        """[Deprecated] Generate a new unique ID
         """
         import hashlib
         m = hashlib.sha256()
@@ -144,6 +144,11 @@ class Person(models.Model):
         m.update(bytes(username, 'utf-8'))
         m.update(bytes(timezone.now().isoformat(), 'utf-8'))
         return m.hexdigest()[:10]
+
+    def _get_noid(self):
+        """Get a fresh NOID from ddr-idservice noidminter API
+        """
+        return noidminter.get_noid()
 
     def revisions(self):
         return Revision.objects.filter(model='persopn', record_id=self.nr_id)
