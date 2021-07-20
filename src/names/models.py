@@ -2,6 +2,9 @@ from datetime import datetime
 import difflib
 import json
 
+from requests.exceptions import ConnectionError
+
+from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import connections, models
@@ -148,7 +151,13 @@ class Person(models.Model):
     def _get_noid(self):
         """Get a fresh NOID from ddr-idservice noidminter API
         """
-        return noidminter.get_noid()
+        try:
+            return noidminter.get_noid()
+        except ConnectionError:
+            raise Exception(
+                f'Could not connect to ddr-idservice at {settings.NOIDMINTER_URL}.' \
+                ' Please check settings.'
+            )
 
     def revisions(self):
         return Revision.objects.filter(model='persopn', record_id=self.nr_id)
