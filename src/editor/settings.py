@@ -63,6 +63,14 @@ DOCSTORE_HOSTS = config.get('database', 'namesdb_host')
 STATIC_ROOT = config.get('media', 'static_root')
 STATIC_URL = config.get('media', 'static_url')
 
+NOIDMINTER_HOST = config.get('noidminter', 'idservice_host')
+NOIDMINTER_TEMPLATE = config.get('noidminter', 'noid_template')
+NOIDMINTER_URL = f'http://{NOIDMINTER_HOST}/noid/api/1.0/{NOIDMINTER_TEMPLATE}/'
+NOIDMINTER_USERNAME = config.get('noidminter', 'idservice_username')
+NOIDMINTER_PASSWORD = config.get('noidminter', 'idservice_password')
+if not (NOIDMINTER_USERNAME and NOIDMINTER_PASSWORD):
+    raise Exception('Set ddr-idservice username and/or password in settings.')
+
 # ----------------------------------------------------------------------
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
