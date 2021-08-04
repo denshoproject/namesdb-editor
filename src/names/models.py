@@ -3,6 +3,7 @@ import difflib
 import json
 
 from requests.exceptions import ConnectionError
+from tabulate import tabulate
 
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -611,6 +612,40 @@ def load_facilities(csv_path):
         for d in dicts
     ]
     return facilities
+
+def model_fields(class_, exclude_fields=[]):
+    """Return name, type, and verbose description for each field in the model.
+    """
+    fields = class_._meta.get_fields()
+    data = [
+        [x.name, x.get_internal_type(), x.verbose_name]
+        for x in fields
+        if (
+            not (x.many_to_one or x.many_to_many
+                 or x.one_to_one or x.one_to_many
+                 or x.related_model)
+        ) and (
+            not x.name in exclude_fields
+        )
+    ]
+    for x in fields:
+        if x.one_to_one:
+            data.append( [x.name, x.get_internal_type()] )
+    for x in fields:
+        if x.one_to_many:
+            data.append( [x.name, x.get_internal_type()] )
+    for x in fields:
+        if x.many_to_one:
+            data.append( [x.name, x.get_internal_type(), x.verbose_name] )
+    for x in fields:
+        if x.many_to_many:
+            data.append( [x.name, x.get_internal_type()] )
+    return data
+
+def format_model_fields(fields):
+    """Return output of model_fields() as a table formatted string
+    """
+    return tabulate(fields)
 
 
 MODEL_CLASSES = {

@@ -73,6 +73,16 @@ def help():
     click.echo(HELP)
 
 @namesdb.command()
+@click.argument('model')
+def schema(model):
+    """Print schema for specified model
+    """
+    class_ = models.MODEL_CLASSES[model]
+    fields = models.model_fields(class_)
+    schema = models.format_model_fields(fields)
+    click.echo(schema)
+
+@namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
 @click.option('--limit','-l', default=None)
 @click.argument('model')
