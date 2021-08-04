@@ -35,6 +35,8 @@ ELASTICSEARCH_CLASSES_BY_MODEL = {
 
 class NamesRouter:
     """Write all Names DB data to separate DATABASES['names'] database.
+    
+    Write Django-specific data to one file and Person/FAR/WRA data to another.
     """
     def db_for_read(self, model, **hints):
         if model._meta.app_label == 'names':
@@ -118,13 +120,15 @@ class Person(models.Model):
          return reverse('admin:names_person_change', args=(self.id,))
 
     def save(self, username=None, *args, **kwargs):
+        """Save Person, adding NOID if absent and Revision with request.user
+        """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
         if getattr(self, 'user', None):
             username = getattr(self, 'user').username
         # New NR ID if none exists
         if not self.nr_id:
             self.nr_id = self._get_noid()
-        # get existing record
+        # get existing record for comparison
         try:
             old = Person.objects.get(nr_id=self.nr_id)
         except Person.DoesNotExist:
@@ -161,6 +165,8 @@ class Person(models.Model):
             )
 
     def revisions(self):
+        """List of object Revisions
+        """
         return Revision.objects.filter(model='persopn', record_id=self.nr_id)
 
     @staticmethod
@@ -327,10 +333,12 @@ class FarRecord(models.Model):
         )
 
     def save(self, username=None, *args, **kwargs):
+        """Save FarRecord, adding Revision with request.user
+        """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
         if getattr(self, 'user', None):
             username = getattr(self, 'user').username
-        # get existing record
+        # get existing record for comparison
         try:
             old = FarRecord.objects.get(far_record_id=self.far_record_id)
         except FarRecord.DoesNotExist:
@@ -346,6 +354,8 @@ class FarRecord(models.Model):
         r.save()
 
     def revisions(self):
+        """List of object Revisions
+        """
         return Revision.objects.filter(model='far', record_id=self.far_record_id)
 
     @staticmethod
@@ -449,10 +459,12 @@ class WraRecord(models.Model):
         )
 
     def save(self, username=None, *args, **kwargs):
+        """Save WraRecord, adding Revision with request.user
+        """
         # request.user added to obj in names.admin.WraRecordAdmin.save_model
         if getattr(self, 'user', None):
             username = getattr(self, 'user').username
-        # get existing record
+        # get existing record for comparison
         try:
             old = WraRecord.objects.get(wra_record_id=self.wra_record_id)
         except WraRecord.DoesNotExist:
@@ -468,6 +480,8 @@ class WraRecord(models.Model):
         r.save()
 
     def revisions(self):
+        """List of object Revisions
+        """
         return Revision.objects.filter(
             model='wra', record_id=self.wra_record_id
         )
@@ -575,6 +589,8 @@ def load_csv(csv_path, limit=None):
     
 def save_rowd(rowd, class_, username):
     """Load records from CSV
+    
+    TODO bulk NOID creation for Person
     """
     record = class_()
     try:

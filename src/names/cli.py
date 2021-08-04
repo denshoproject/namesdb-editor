@@ -6,8 +6,8 @@ Sample usage:
     # Import data from CSV
     $ namesdb import far far-records.csv
 
-    # Export data without Django-specific tables
-    $ namesdb export
+    # Copy SQLite3 database, removing Django-specific tables
+    $ namesdb exportdb
 
     # Create and destroy Elasticsearch indexes
     $ namesdb create -H localhost:9200
@@ -171,7 +171,7 @@ def status(hosts):
 @click.option('--debug','-d', is_flag=True, default=False)
 @click.argument('model')
 def post(hosts, limit, debug, model):
-    """Publish data from SQL database to Elasticsearch.
+    """Post data from SQL database to Elasticsearch.
     """
     model = model_w_abbreviations(model.lower().strip())
     hosts = hosts_index(hosts)
@@ -255,7 +255,7 @@ def delete(hosts, model, record_id):
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
-def export(debug):
+def exportdb(debug):
     """Copy SQLite3 database, removing Django-specific tables
     """
     src = settings.DATABASES['names']['NAME']
