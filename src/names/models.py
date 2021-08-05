@@ -150,7 +150,7 @@ class Person(models.Model):
                 setattr(o, key, val)
         return o
 
-    def save(self, username, note, *args, **kwargs):
+    def save(self, rowd, username, note, *args, **kwargs):
         """Save Person, adding NOID if absent and Revision with request.user
         """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
@@ -164,13 +164,23 @@ class Person(models.Model):
             old = Person.objects.get(nr_id=self.nr_id)
         except Person.DoesNotExist:
             old = None
+        # has the record changed?
+        if old:
+            changed = 0
+            for fieldname in rowd.keys():
+                if not (getattr(self, fieldname) == getattr(old, fieldname)):
+                    changed += 1
+        else:
+            changed = 1
+        # now save
         self.timestamp = timezone.now()
         super(Person, self).save()
-        r = Revision(
-            content_object=self,
-            username=username, note=note, diff=make_diff(old, self)
-        )
-        r.save()
+        if changed:
+            r = Revision(
+                content_object=self,
+                username=username, note=note, diff=make_diff(old, self)
+            )
+            r.save()
 
     def _make_nr_id(self, username):
         """[Deprecated] Generate a new unique ID
@@ -378,7 +388,7 @@ class FarRecord(models.Model):
                 setattr(o, key, val)
         return o
 
-    def save(self, username, note, *args, **kwargs):
+    def save(self, rowd, username, note, *args, **kwargs):
         """Save FarRecord, adding Revision with request.user
         """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
@@ -389,13 +399,23 @@ class FarRecord(models.Model):
             old = FarRecord.objects.get(far_record_id=self.far_record_id)
         except FarRecord.DoesNotExist:
             old = None
+        # has the record changed?
+        if old:
+            changed = 0
+            for fieldname in rowd.keys():
+                if not (getattr(self, fieldname) == getattr(old, fieldname)):
+                    changed += 1
+        else:
+            changed = 1
+        # now save
         self.timestamp = timezone.now()
         super(FarRecord, self).save()
-        r = Revision(
-            content_object=self,
-            username=username, note=note, diff=make_diff(old, self)
-        )
-        r.save()
+        if changed:
+            r = Revision(
+                content_object=self,
+                username=username, note=note, diff=make_diff(old, self)
+            )
+            r.save()
 
     def revisions(self):
         """List of object Revisions
@@ -519,7 +539,7 @@ class WraRecord(models.Model):
                 setattr(o, key, val)
         return o
 
-    def save(self, username, note, *args, **kwargs):
+    def save(self, rowd, username, note, *args, **kwargs):
         """Save FarRecord, adding Revision with request.user
         """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
@@ -530,14 +550,23 @@ class WraRecord(models.Model):
             old = WraRecord.objects.get(wra_record_id=self.wra_record_id)
         except WraRecord.DoesNotExist:
             old = None
+        # has the record changed?
+        if old:
+            changed = 0
+            for fieldname in rowd.keys():
+                if not (getattr(self, fieldname) == getattr(old, fieldname)):
+                    changed += 1
+        else:
+            changed = 1
+        # now save
         self.timestamp = timezone.now()
         super(WraRecord, self).save()
-        r = Revision(
-            object_id=str(self.wra_record_id),
-            content_object=self,
-            username=username, note=note, diff=make_diff(old, self)
-        )
-        r.save()
+        if changed:
+            r = Revision(
+                content_object=self,
+                username=username, note=note, diff=make_diff(old, self)
+            )
+            r.save()
 
     def revisions(self):
         """List of object Revisions
