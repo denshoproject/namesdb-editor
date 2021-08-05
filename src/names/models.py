@@ -150,7 +150,7 @@ class Person(models.Model):
                 setattr(o, key, val)
         return o
 
-    def save(self, rowd, username, note, *args, **kwargs):
+    def save(self, username, note, *args, **kwargs):
         """Save Person, adding NOID if absent and Revision with request.user
         """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
@@ -167,8 +167,8 @@ class Person(models.Model):
         # has the record changed?
         if old:
             changed = 0
-            for fieldname in rowd.keys():
-                if not (getattr(self, fieldname) == getattr(old, fieldname)):
+            for field in Person._meta.get_fields():
+                if not (getattr(self, field.name) == getattr(old, field.name)):
                     changed += 1
         else:
             changed = 1
@@ -388,7 +388,7 @@ class FarRecord(models.Model):
                 setattr(o, key, val)
         return o
 
-    def save(self, rowd, username, note, *args, **kwargs):
+    def save(self, username, note, *args, **kwargs):
         """Save FarRecord, adding Revision with request.user
         """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
@@ -402,8 +402,8 @@ class FarRecord(models.Model):
         # has the record changed?
         if old:
             changed = 0
-            for fieldname in rowd.keys():
-                if not (getattr(self, fieldname) == getattr(old, fieldname)):
+            for field in FarRecord._meta.get_fields():
+                if not (getattr(self, field.name) == getattr(old, field.name)):
                     changed += 1
         else:
             changed = 1
@@ -539,7 +539,7 @@ class WraRecord(models.Model):
                 setattr(o, key, val)
         return o
 
-    def save(self, rowd, username, note, *args, **kwargs):
+    def save(self, username, note, *args, **kwargs):
         """Save FarRecord, adding Revision with request.user
         """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
@@ -553,8 +553,8 @@ class WraRecord(models.Model):
         # has the record changed?
         if old:
             changed = 0
-            for fieldname in rowd.keys():
-                if not (getattr(self, fieldname) == getattr(old, fieldname)):
+            for field in WraRecord._meta.get_fields():
+                if not (getattr(self, field.name) == getattr(old, field.name)):
                     changed += 1
         else:
             changed = 1
