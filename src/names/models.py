@@ -2,6 +2,7 @@ from datetime import datetime
 import difflib
 import json
 
+from dateutil import parser
 from requests.exceptions import ConnectionError
 from tabulate import tabulate
 
@@ -119,7 +120,37 @@ class Person(models.Model):
     def admin_url(self):
          return reverse('admin:names_person_change', args=(self.id,))
 
-    def save(self, username=None, *args, **kwargs):
+    @staticmethod
+    def load_rowd(rowd):
+        """Given a rowd dict from a CSV, return a Person object
+        """
+        try:
+            o = models.Person.objects.get(nr_id=rowd['nr_id'])
+        except:
+            o = Person()
+        # special cases
+        if rowd.get('other_names'):
+            names = rowd.pop('other_names')
+            names = names.replace('[','').replace(']','')
+            names = names.replace("'",'').replace('"','').split(',')
+            if names:
+                o.other_names = '\n'.join(names)
+        if rowd.get('birth_date'):
+            o.birth_date = parser.parse(rowd.pop('birth_date'))
+        if rowd.get('death_date'):
+            o.death_date = parser.parse(rowd.pop('death_date'))
+        if rowd.get('facility'):
+            f = PersonFacility
+            o.facility = None
+        # everything else
+        for key,val in rowd.items():
+            if val:
+                if isinstance(val, str):
+                    val = val.replace('00:00:00', '').strip()
+                setattr(o, key, val)
+        return o
+
+    def save(self, username, note, *args, **kwargs):
         """Save Person, adding NOID if absent and Revision with request.user
         """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
@@ -133,8 +164,6 @@ class Person(models.Model):
             old = Person.objects.get(nr_id=self.nr_id)
         except Person.DoesNotExist:
             old = None
-        # should be field in admin
-        note = ''
         self.timestamp = timezone.now()
         super(Person, self).save()
         r = Revision(
@@ -332,7 +361,24 @@ class FarRecord(models.Model):
             self.last_name, self.first_name, self.sex, self.facility, self.far_record_id
         )
 
-    def save(self, username=None, *args, **kwargs):
+    @staticmethod
+    def load_rowd(rowd):
+        """Given a rowd dict from a CSV, return a FarRecord object
+        """
+        try:
+            o = models.FarRecord.objects.get(
+                far_record_id=rowd['far_record_id']
+            )
+        except:
+            o = FarRecord()
+        for key,val in rowd.items():
+            if val:
+                if isinstance(val, str):
+                    val = val.replace('00:00:00', '').strip()
+                setattr(o, key, val)
+        return o
+
+    def save(self, username, note, *args, **kwargs):
         """Save FarRecord, adding Revision with request.user
         """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
@@ -343,8 +389,6 @@ class FarRecord(models.Model):
             old = FarRecord.objects.get(far_record_id=self.far_record_id)
         except FarRecord.DoesNotExist:
             old = None
-        # should be field in admin
-        note = ''
         self.timestamp = timezone.now()
         super(FarRecord, self).save()
         r = Revision(
@@ -458,10 +502,27 @@ class WraRecord(models.Model):
             self.lastname, self.firstname, self.gender, self.facility,self.wra_record_id
         )
 
-    def save(self, username=None, *args, **kwargs):
-        """Save WraRecord, adding Revision with request.user
+    @staticmethod
+    def load_rowd(rowd):
+        """Given a rowd dict from a CSV, return a WraRecord object
         """
-        # request.user added to obj in names.admin.WraRecordAdmin.save_model
+        try:
+            o = models.WraRecord.objects.get(
+                wra_record_id=rowd['wra_record_id']
+            )
+        except:
+            o = WraRecord()
+        for key,val in rowd.items():
+            if val:
+                if isinstance(val, str):
+                    val = val.replace('00:00:00', '').strip()
+                setattr(o, key, val)
+        return o
+
+    def save(self, username, note, *args, **kwargs):
+        """Save FarRecord, adding Revision with request.user
+        """
+        # request.user added to obj in names.admin.FarRecordAdmin.save_model
         if getattr(self, 'user', None):
             username = getattr(self, 'user').username
         # get existing record for comparison
@@ -469,11 +530,10 @@ class WraRecord(models.Model):
             old = WraRecord.objects.get(wra_record_id=self.wra_record_id)
         except WraRecord.DoesNotExist:
             old = None
-        # should be field in admin
-        note = ''
         self.timestamp = timezone.now()
         super(WraRecord, self).save()
         r = Revision(
+            object_id=str(self.wra_record_id),
             content_object=self,
             username=username, note=note, diff=make_diff(old, self)
         )
@@ -583,29 +643,6 @@ def make_diff(old, new):
         )
     ]).replace('\n\n', '\n')
 
-
-def load_csv(csv_path, limit=None):
-    return csvfile.make_rowds(fileio.read_csv(csv_path, limit))
-    
-def save_rowd(rowd, class_, username):
-    """Load records from CSV
-    
-    TODO bulk NOID creation for Person
-    """
-    record = class_()
-    try:
-        idkey = 'far_record_id'
-        x = rowd[idkey]
-    except:
-        idkey = 'wra_record_id'
-    #print(n,rowd[idkey])
-    for key,val in rowd.items():
-        if val:
-            if isinstance(val, str):
-                val = val.replace('00:00:00', '')
-                val = val.strip()
-            setattr(record, key, val)
-    record.save(username=username, note='CSV import')
 
 def load_facilities(csv_path):
     unique = list(set([

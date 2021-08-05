@@ -49,7 +49,9 @@ from django.conf import settings
 import requests
 from tqdm import tqdm
 
+from . import csvfile
 from . import docstore
+from . import fileio
 from . import models
 from . import publish
 from namesdb_public import models as models_public
@@ -95,10 +97,10 @@ def load(debug, limit, model, csv_path, username):
         limit = int(limit)
     sql_class = models.MODEL_CLASSES[model]
     for rowd in tqdm(
-            models.load_csv(csv_path, limit),
+            csvfile.make_rowds(fileio.read_csv(csv_path, limit)),
             desc='Writing database', ascii=True, unit='record'
     ):
-        models.save_rowd(rowd, sql_class, username)
+        sql_class.load_rowd(rowd).save(username, note='Load from CSV')
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
