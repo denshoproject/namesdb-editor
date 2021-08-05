@@ -71,7 +71,7 @@ class Facility(models.Model):
 
 
 class Person(models.Model):
-    nr_id                         = models.CharField(max_length=30, primary_key=True,      verbose_name='Names Registry ID',         help_text='Names Registry unique identifier')
+    nr_id                         = models.CharField(max_length=255, primary_key=True,      verbose_name='Names Registry ID',         help_text='Names Registry unique identifier')
     family_name                   = models.CharField(max_length=30,                        verbose_name='Last Name',                 help_text='Preferred family or last name')
     given_name                    = models.CharField(max_length=30,                        verbose_name='First Name',                help_text='Preferred given or first name')
     given_name_alt                = models.TextField(max_length=30, blank=True, null=True, verbose_name='Alternative First Names',   help_text='List of alternative first names')
@@ -406,7 +406,7 @@ class FarRecord(models.Model):
 
 
 class WraRecord(models.Model):
-    wra_record_id     = models.IntegerField(primary_key=1,        verbose_name='WRA Form 26 ID', help_text='Unique identifier; absolute row in original RG210.JAPAN.WRA26 datafile')
+    wra_record_id     = models.CharField(max_length=255, primary_key=1, verbose_name='WRA Record ID', help_text="Derived from WRA ledger id + line id ('original_order')")
     facility          = models.CharField(max_length=255,          verbose_name='Facility identifier', help_text='Facility identifier')
     lastname          = models.CharField(max_length=255, blank=1, verbose_name='Last name, truncated to 10 chars', help_text='Last name, truncated to 10 chars')
     firstname         = models.CharField(max_length=255, blank=1, verbose_name='First name, truncated to 8 chars', help_text='First name, truncated to 8 chars')
