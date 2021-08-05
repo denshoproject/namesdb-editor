@@ -19,6 +19,7 @@ class RevisionAdmin(admin.ModelAdmin):
         'content_object',
         'username',
         'timestamp',
+        'note',
     )
     list_display_links = ('content_object',)
     list_filter = (
@@ -30,7 +31,7 @@ class RevisionAdmin(admin.ModelAdmin):
         'object_id',
         #'content_object',
         'username',
-        #'note',
+        'note',
         'diff',
     )
     date_hierarchy = 'timestamp'
@@ -41,7 +42,7 @@ class RevisionAdmin(admin.ModelAdmin):
             ('content_type', 'object_id'),
             ('username'),
             'diff',
-            #'note',
+            'note',
         )}),
     )
 
@@ -53,7 +54,7 @@ class RevisionInline(GenericTabularInline):
     readonly_fields = ('timestamp',)
     max_num=5
     fields = (
-        'timestamp', 'username', 'diff',
+        'timestamp', 'diff', 'username', 'note',
     )
 
     def has_add_permission(self, request, obj): return False
@@ -140,8 +141,9 @@ class FarRecordAdmin(admin.ModelAdmin):
     )
 
     def save_model(self, request, obj, form, change):
-        # request.user is used by Revision
+        # request.user and notes are used by Revision
         obj.user = request.user
+        obj.note = 'NOTE TEXT FROM names.admin.FarRecordAdmin.save_model'
         super().save_model(request, obj, form, change)
 
 
@@ -212,8 +214,9 @@ class WraRecordAdmin(admin.ModelAdmin):
     )
 
     def save_model(self, request, obj, form, change):
-        # request.user is used by Revision
+        # request.user and notes are used by Revision
         obj.user = request.user
+        obj.note = 'NOTE TEXT FROM names.admin.WraRecordAdmin.save_model'
         super().save_model(request, obj, form, change)
 
 
@@ -309,6 +312,7 @@ class PersonAdmin(admin.ModelAdmin):
     )
 
     def save_model(self, request, obj, form, change):
-        # request.user is used by Revision
+        # request.user and notes are used by Revision
         obj.user = request.user
+        obj.note = 'NOTE TEXT FROM names.admin.PersonAdmin.save_model'
         super().save_model(request, obj, form, change)

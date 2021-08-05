@@ -150,12 +150,26 @@ class Person(models.Model):
                 setattr(o, key, val)
         return o
 
-    def save(self, username, note, *args, **kwargs):
+    def save(self, *args, **kwargs):
         """Save Person, adding NOID if absent and Revision with request.user
         """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
         if getattr(self, 'user', None):
             username = getattr(self, 'user').username
+        # ...or comes from names.cli.load
+        elif kwargs.get('username'):
+            username = kwargs['username']
+        else:
+            username = 'UNKNOWN'
+        # note is added to obj in names.admin.FarRecordAdmin.save_model
+        if getattr(self, 'note', None):
+            note = getattr(self, 'note')
+        # ...or comes from names.cli.load
+        elif kwargs.get('note'):
+            note = kwargs['note']
+        else:
+            note = 'DEFAULT NOTE TEXT'
+        
         # New NR ID if none exists
         if not self.nr_id:
             self.nr_id = self._get_noid()
@@ -381,7 +395,7 @@ class FarRecord(models.Model):
                 setattr(o, key, val)
         return o
 
-    def save(self, username, note, *args, **kwargs):
+    def save(self, *args, **kwargs):
         """Save FarRecord, adding Revision with request.user
         """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
@@ -539,7 +553,7 @@ class WraRecord(models.Model):
                 setattr(o, key, val)
         return o
 
-    def save(self, username, note, *args, **kwargs):
+    def save(self, *args, **kwargs):
         """Save FarRecord, adding Revision with request.user
         """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
