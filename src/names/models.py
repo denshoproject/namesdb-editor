@@ -554,7 +554,7 @@ class WraRecord(models.Model):
         return o
 
     def save(self, *args, **kwargs):
-        """Save FarRecord, adding Revision with request.user
+        """Save WraRecord, adding Revision with request.user
         """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
         if getattr(self, 'user', None):
