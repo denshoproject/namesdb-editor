@@ -159,23 +159,12 @@ class Person(models.Model):
         # New NR ID if none exists
         if not self.nr_id:
             self.nr_id = self._get_noid()
-        # get existing record for comparison
+        # has the record changed?
         try:
             old = Person.objects.get(nr_id=self.nr_id)
         except Person.DoesNotExist:
             old = None
-        # has the record changed?
-        if old:
-            changed = 0
-            for field in Person._meta.get_fields():
-                # has value of this field (or lack thereof) changed?
-                # and is it in django.db.models.fields and not one of those
-                # ManyToOneRel things?
-                if not (getattr(self, field.name) == getattr(old, field.name)) \
-                and hasattr(self, 'column'):
-                    changed += 1
-        else:
-            changed = 1
+        changed = Revision.object_has_changed(self, old, Person)
         # now save
         self.timestamp = timezone.now()
         super(Person, self).save()
@@ -398,20 +387,26 @@ class FarRecord(models.Model):
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
         if getattr(self, 'user', None):
             username = getattr(self, 'user').username
-        # get existing record for comparison
+        # ...or comes from names.cli.load
+        elif kwargs.get('username'):
+            username = kwargs['username']
+        else:
+            username = 'UNKNOWN'
+        # note is added to obj in names.admin.FarRecordAdmin.save_model
+        if getattr(self, 'note', None):
+            note = getattr(self, 'note')
+        # ...or comes from names.cli.load
+        elif kwargs.get('note'):
+            note = kwargs['note']
+        else:
+            note = 'DEFAULT NOTE TEXT'
+        
+        # has the record changed?
         try:
             old = FarRecord.objects.get(far_record_id=self.far_record_id)
         except FarRecord.DoesNotExist:
             old = None
-        # has the record changed?
-        if old:
-            changed = 0
-            for field in FarRecord._meta.get_fields():
-                # has value of this field (or lack thereof) changed?
-                if not (getattr(self, field.name) == getattr(old, field.name)):
-                    changed += 1
-        else:
-            changed = 1
+        changed = Revision.object_has_changed(self, old, FarRecord)
         # now save
         self.timestamp = timezone.now()
         super(FarRecord, self).save()
@@ -550,20 +545,26 @@ class WraRecord(models.Model):
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
         if getattr(self, 'user', None):
             username = getattr(self, 'user').username
-        # get existing record for comparison
+        # ...or comes from names.cli.load
+        elif kwargs.get('username'):
+            username = kwargs['username']
+        else:
+            username = 'UNKNOWN'
+        # note is added to obj in names.admin.FarRecordAdmin.save_model
+        if getattr(self, 'note', None):
+            note = getattr(self, 'note')
+        # ...or comes from names.cli.load
+        elif kwargs.get('note'):
+            note = kwargs['note']
+        else:
+            note = 'DEFAULT NOTE TEXT'
+        
+        # has the record changed?
         try:
             old = WraRecord.objects.get(wra_record_id=self.wra_record_id)
         except WraRecord.DoesNotExist:
             old = None
-        # has the record changed?
-        if old:
-            changed = 0
-            for field in WraRecord._meta.get_fields():
-                # has value of this field (or lack thereof) changed?
-                if not (getattr(self, field.name) == getattr(old, field.name)):
-                    changed += 1
-        else:
-            changed = 1
+        changed = Revision.object_has_changed(self, old, WraRecord)
         # now save
         self.timestamp = timezone.now()
         super(WraRecord, self).save()
@@ -638,6 +639,29 @@ class Revision(models.Model):
 
     def __repr__(self):
         return f'<Revision {self.content_object} {self.timestamp} {self.username}>'
+
+    @staticmethod
+    def object_has_changed(new_object, old_object, object_class):
+        """Have values of any object fields changed?
+        """
+        if old_object:
+            changed = 0
+            for field in object_class._meta.get_fields():
+                # ignore ManyToOneRel things, focus on django.db.models.fields.*
+                if not hasattr(new_object, 'column'):
+                    continue
+                # ignore timestamp changes
+                if field.name == 'timestamp':
+                    continue
+                # has value of this field (or lack thereof) changed?
+                old_value = getattr(new_object, field.name)
+                new_value = getattr(old_object, field.name)
+                if not (old_value == new_value):
+                    changed += 1
+            return changed
+        else:
+            return 0
+
 
 def _jsonfriendly_value(value):
     if not isinstance(value, str):
