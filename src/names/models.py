@@ -168,7 +168,11 @@ class Person(models.Model):
         if old:
             changed = 0
             for field in Person._meta.get_fields():
-                if not (getattr(self, field.name) == getattr(old, field.name)):
+                # has value of this field (or lack thereof) changed?
+                # and is it in django.db.models.fields and not one of those
+                # ManyToOneRel things?
+                if not (getattr(self, field.name) == getattr(old, field.name)) \
+                and hasattr(self, 'column'):
                     changed += 1
         else:
             changed = 1
@@ -403,6 +407,7 @@ class FarRecord(models.Model):
         if old:
             changed = 0
             for field in FarRecord._meta.get_fields():
+                # has value of this field (or lack thereof) changed?
                 if not (getattr(self, field.name) == getattr(old, field.name)):
                     changed += 1
         else:
@@ -554,6 +559,7 @@ class WraRecord(models.Model):
         if old:
             changed = 0
             for field in WraRecord._meta.get_fields():
+                # has value of this field (or lack thereof) changed?
                 if not (getattr(self, field.name) == getattr(old, field.name)):
                     changed += 1
         else:
