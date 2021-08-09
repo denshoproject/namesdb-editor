@@ -119,10 +119,11 @@ def dump(debug, cols, limit, model, csv_path):
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
 @click.option('--limit','-l', default=None)
+@click.option('--note','-n', default='Load from CSV')
 @click.argument('model')
 @click.argument('csv_path')
 @click.argument('username')
-def load(debug, limit, model, csv_path, username):
+def load(debug, limit, note, model, csv_path, username):
     """Load data from a CSV file
     """
     if limit:
@@ -132,7 +133,7 @@ def load(debug, limit, model, csv_path, username):
             csvfile.make_rowds(fileio.read_csv(csv_path, limit)),
             desc='Writing database', ascii=True, unit='record'
     ):
-        sql_class.load_rowd(rowd).save(username=username, note='Load from CSV')
+        sql_class.load_rowd(rowd).save(username=username, note=note)
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
