@@ -120,6 +120,13 @@ class Person(models.Model):
     def admin_url(self):
          return reverse('admin:names_person_change', args=(self.id,))
 
+    def dump_rowd(self, fieldnames):
+        """Return a rowd dict suitable for inclusion in a CSV
+        """
+        return {
+            fieldname: getattr(self, fieldname, '') for fieldname in fieldnames
+        }
+
     @staticmethod
     def load_rowd(rowd):
         """Given a rowd dict from a CSV, return a Person object
@@ -378,6 +385,13 @@ class FarRecord(models.Model):
             self.last_name, self.first_name, self.sex, self.facility, self.far_record_id
         )
 
+    def dump_rowd(self, fieldnames):
+        """Return a rowd dict suitable for inclusion in a CSV
+        """
+        return {
+            fieldname: getattr(self, fieldname, '') for fieldname in fieldnames
+        }
+
     @staticmethod
     def load_rowd(rowd):
         """Given a rowd dict from a CSV, return a FarRecord object
@@ -535,6 +549,13 @@ class WraRecord(models.Model):
         return '{} {} ({}) {} {}'.format(
             self.lastname, self.firstname, self.gender, self.facility,self.wra_record_id
         )
+
+    def dump_rowd(self, fieldnames):
+        """Return a rowd dict suitable for inclusion in a CSV
+        """
+        return {
+            fieldname: getattr(self, fieldname, '') for fieldname in fieldnames
+        }
 
     @staticmethod
     def load_rowd(rowd):
@@ -783,9 +804,30 @@ def format_model_fields(fields):
     """
     return tabulate(fields)
 
-
 MODEL_CLASSES = {
     'person': Person,
     'farrecord': FarRecord,
     'wrarecord': WraRecord,
 }
+
+def write_csv(csv_path, model_class, cols, limit=None, debug=False):
+    """Writes rowds of specified model class to CSV file
+    """
+    with open(csv_path, 'w', newline='') as f:
+        writer = fileio.csv_writer(f)
+        if debug: print(f'header {cols}')
+        writer.writerow(cols)
+        n = 0
+        if limit:
+            for o in model_class.objects.all()[:limit]:
+                row = list(o.dump_rowd(cols).values())
+                if debug: print(f'{n}/{limit} row {row}')
+                writer.writerow(row)
+                n += 1
+        else:
+            num = model_class.objects.count()
+            for o in model_class.objects.all():
+                row = list(o.dump_rowd(cols).values())
+                if debug: print(f'{n}/{num} {row[0]}')
+                writer.writerow(row)
+                n += 1

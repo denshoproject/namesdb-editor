@@ -86,6 +86,38 @@ def schema(model):
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
+@click.option('--cols','-c', default=None)
+@click.option('--limit','-l', default=None)
+@click.argument('model')
+@click.argument('csv_path')
+def dump(debug, cols, limit, model, csv_path):
+    """Dump data to a CSV file
+    """
+    model_class = models.MODEL_CLASSES[model]
+    if debug: print(f'model_class {model_class}')
+    EXCLUDED_FIELDS = [
+        'timestamp',  # why would we export this
+    ]
+    model_fieldnames = [
+        f[0]
+        for f in models.model_fields(model_class)
+        if not f[0] in EXCLUDED_FIELDS
+    ]
+    id_fieldname = model_fieldnames[0]
+    if cols:
+        cols = [f for f in cols.strip().split(',') if f in model_fieldnames]
+        if id_fieldname not in cols:
+            cols.insert(0, id_fieldname)
+    else:
+        cols = model_fieldnames
+    if debug: print(f'cols {cols}')
+    if limit:
+        limit = int(limit)
+    if debug: print(f'limit {limit}')
+    models.write_csv(csv_path, model_class, cols, limit, debug)
+
+@namesdb.command()
+@click.option('--debug','-d', is_flag=True, default=False)
 @click.option('--limit','-l', default=None)
 @click.argument('model')
 @click.argument('csv_path')
