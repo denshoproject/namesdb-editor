@@ -125,8 +125,8 @@ class Person(models.Model):
         """Given a rowd dict from a CSV, return a Person object
         """
         try:
-            o = models.Person.objects.get(nr_id=rowd['nr_id'])
-        except:
+            o = Person.objects.get(nr_id=rowd['nr_id'])
+        except Person.DoesNotExist:
             o = Person()
         # special cases
         if rowd.get('other_names'):
@@ -383,10 +383,10 @@ class FarRecord(models.Model):
         """Given a rowd dict from a CSV, return a FarRecord object
         """
         try:
-            o = models.FarRecord.objects.get(
+            o = FarRecord.objects.get(
                 far_record_id=rowd['far_record_id']
             )
-        except:
+        except FarRecord.DoesNotExist:
             o = FarRecord()
         for key,val in rowd.items():
             if val:
@@ -541,10 +541,10 @@ class WraRecord(models.Model):
         """Given a rowd dict from a CSV, return a WraRecord object
         """
         try:
-            o = models.WraRecord.objects.get(
+            o = WraRecord.objects.get(
                 wra_record_id=rowd['wra_record_id']
             )
-        except:
+        except WraRecord.DoesNotExist:
             o = WraRecord()
         for key,val in rowd.items():
             if val:
