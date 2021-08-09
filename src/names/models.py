@@ -676,7 +676,7 @@ def _jsonfriendly_value(value):
         value = str(value)
     return value
 
-def jsonlines(obj):
+def jsonlines(obj, excluded_fields=[]):
     """JSONlines representation of object fields, for making diffs
     see https://jsonlines.org/
     """
@@ -686,10 +686,12 @@ def jsonlines(obj):
                 fieldname: _jsonfriendly_value(getattr(obj, fieldname))
             })
             for fieldname in [field.name for field in obj._meta.fields]
+            if not fieldname in excluded_fields
         ]
     return ''
 
 def make_diff(old, new):
+    EXCLUDED_FIELDS = ['timestamp']
     if not old:
         # no diff for revision 0
         # get object id
@@ -702,8 +704,8 @@ def make_diff(old, new):
     return '\n'.join([
         line
         for line in difflib.unified_diff(
-                jsonlines(old),
-                jsonlines(new),
+                jsonlines(old, EXCLUDED_FIELDS),
+                jsonlines(new, EXCLUDED_FIELDS),
                 fromfile=f'{old.timestamp}',
                 tofile=f'{new.timestamp}',
                 n=1
