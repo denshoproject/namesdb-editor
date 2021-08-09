@@ -646,21 +646,29 @@ class Revision(models.Model):
         """
         if old_object:
             changed = 0
+            fields_considered = []
+            fields_diff = []
+            fields_same = []
             for field in object_class._meta.get_fields():
                 # ignore ManyToOneRel things, focus on django.db.models.fields.*
-                if not hasattr(new_object, 'column'):
+                if not hasattr(field, 'column'):
+                    fields_considered.append(f'column - {field}')
                     continue
                 # ignore timestamp changes
                 if field.name == 'timestamp':
+                    fields_considered.append(f'tmstmp - {field}')
                     continue
                 # has value of this field (or lack thereof) changed?
                 old_value = getattr(new_object, field.name)
                 new_value = getattr(old_object, field.name)
                 if not (old_value == new_value):
                     changed += 1
+                    fields_diff.append((field.name, old_value, new_value))
+                else:
+                    fields_same.append((field.name, old_value, new_value))
             return changed
         else:
-            return 0
+            return 1
 
 
 def _jsonfriendly_value(value):
