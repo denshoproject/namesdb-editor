@@ -147,7 +147,7 @@ class Person(models.Model):
         )
 
     def admin_url(self):
-         return reverse('admin:names_person_change', args=(self.id,))
+         return reverse('admin:names_person_change', args=(self.nr_id,))
 
     def dump_rowd(self, fieldnames):
         """Return a rowd dict suitable for inclusion in a CSV
