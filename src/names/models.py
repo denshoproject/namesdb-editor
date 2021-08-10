@@ -556,6 +556,31 @@ class FarRecord(models.Model):
         )
 
 
+class FarRecordPerson():
+    """Fake class used for importing FarRecord->Person links"""
+
+    @staticmethod
+    def load_rowd(rowd):
+        """Given a rowd dict from a CSV, return a FarRecord object
+        """
+        def normalize_fieldname(rowd, data, fieldname, choices):
+            for field in choices:
+                if rowd.get(field):
+                    data[fieldname] = rowd.get(field)
+        data = {}
+        normalize_fieldname(rowd, data, 'far_record_id',['far_record_id', 'fk_far_id', 'id'])
+        normalize_fieldname(rowd, data, 'person_id',   ['nr_id', 'person_id'])
+        # update or new
+        f = FarRecord.objects.get(far_record_id=data['far_record_id'])
+        p = Person.objects.get(nr_id=data['person_id'])
+        f.person = p
+        return f
+
+    def save(self, *args, **kwargs):
+        """Save FarRecord"""
+        super(FarRecord, self).save()
+
+
 class WraRecord(models.Model):
     wra_record_id     = models.CharField(max_length=255, primary_key=1, verbose_name='WRA Record ID', help_text="Derived from WRA ledger id + line id ('original_order')")
     facility          = models.CharField(max_length=255,          verbose_name='Facility identifier', help_text='Facility identifier')
@@ -722,6 +747,31 @@ class WraRecord(models.Model):
         )
 
 
+class WraRecordPerson():
+    """Fake class used for importing WraRecord->Person links"""
+
+    @staticmethod
+    def load_rowd(rowd):
+        """Given a rowd dict from a CSV, return a WraRecord object
+        """
+        def normalize_fieldname(rowd, data, fieldname, choices):
+            for field in choices:
+                if rowd.get(field):
+                    data[fieldname] = rowd.get(field)
+        data = {}
+        normalize_fieldname(rowd, data, 'wra_record_id',['wra_record_id', 'fk_wra_id', 'id'])
+        normalize_fieldname(rowd, data, 'person_id',   ['nr_id', 'person_id'])
+        # update or new
+        w = WraRecord.objects.get(wra_record_id=data['wra_record_id'])
+        p = Person.objects.get(nr_id=data['person_id'])
+        w.person = p
+        return w
+
+    def save(self, *args, **kwargs):
+        """Save WraRecord"""
+        super(WraRecord, self).save()
+
+
 class Revision(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.CharField(max_length=30)
@@ -869,6 +919,8 @@ MODEL_CLASSES = {
     'personfacility': PersonFacility,
     'farrecord': FarRecord,
     'wrarecord': WraRecord,
+    'farrecordperson': FarRecordPerson,
+    'wrarecordperson': WraRecordPerson,
 }
 
 def write_csv(csv_path, model_class, cols, limit=None, debug=False):
