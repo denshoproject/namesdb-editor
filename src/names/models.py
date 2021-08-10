@@ -70,6 +70,35 @@ class Facility(models.Model):
         verbose_name = 'Facility'
         verbose_name_plural = 'Facilities'
 
+    @staticmethod
+    def load_rowd(rowd):
+        """Given a rowd dict from a CSV, return a Facility object
+        """
+        def normalize_fieldname(rowd, data, fieldname, choices):
+            for field in choices:
+                if rowd.get(field):
+                    data[fieldname] = rowd.get(field)
+        data = {}
+        normalize_fieldname(rowd, data, 'facility_id',   ['facility_id', 'id'])
+        normalize_fieldname(rowd, data, 'facility_name', ['facility_name', 'name'])
+        normalize_fieldname(rowd, data, 'facility_type', ['facility_type', 'type', 'category'])
+        if not data.get('facility_type'):
+            data['facility_type'] = 'other'
+        # update or new
+        try:
+            facility = Facility.objects.get(
+                facility_id=data['facility_id']
+            )
+        except Facility.DoesNotExist:
+            facility = Facility()
+        for key,val in data.items():
+            setattr(facility, key, val)
+        return facility
+
+    def save(self, *args, **kwargs):
+        """Save Facility, ignoring usernames and notes"""
+        super(Facility, self).save()
+
 
 class Person(models.Model):
     nr_id                         = models.CharField(max_length=255, primary_key=True,      verbose_name='Names Registry ID',         help_text='Names Registry unique identifier')
@@ -805,6 +834,7 @@ def format_model_fields(fields):
     return tabulate(fields)
 
 MODEL_CLASSES = {
+    'facility': Facility,
     'person': Person,
     'farrecord': FarRecord,
     'wrarecord': WraRecord,
