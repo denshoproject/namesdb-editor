@@ -86,8 +86,8 @@ def schema(model):
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
-@click.option('--cols','-c', default=None)
-@click.option('--limit','-l', default=None)
+@click.option('--cols','-c', default=None, help='Export only specified fields.')
+@click.option('--limit','-l', default=None, help='Limit number of records.')
 @click.argument('model')
 @click.argument('csv_path')
 def dump(debug, cols, limit, model, csv_path):
@@ -116,10 +116,13 @@ def dump(debug, cols, limit, model, csv_path):
     if debug: print(f'limit {limit}')
     models.write_csv(csv_path, model_class, cols, limit, debug)
 
+NOTE_DEFAULT = 'Load from CSV'
+
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
-@click.option('--limit','-l', default=None)
-@click.option('--note','-n', default='Load from CSV')
+@click.option('--limit','-l', default=None, help='Limit number of records.')
+@click.option('--note','-n', default=NOTE_DEFAULT,
+              help=f'Optional note (default: "{NOTE_DEFAULT}".')
 @click.argument('model')
 @click.argument('csv_path')
 @click.argument('username')
@@ -202,7 +205,7 @@ def status(hosts):
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
-@click.option('--limit','-l', help='Limit number of records.')
+@click.option('--limit','-l', default=None, help='Limit number of records.')
 @click.option('--debug','-d', is_flag=True, default=False)
 @click.argument('model')
 def post(hosts, limit, debug, model):
