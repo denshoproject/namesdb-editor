@@ -363,6 +363,36 @@ class PersonFacility(models.Model):
     entry_date = models.DateField(blank=1, verbose_name='Facility Entry Date', help_text='Date of entry to detention facility')
     exit_date  = models.DateField(blank=1, verbose_name='Facility Exit Date',  help_text='Date of exit from detention facility')
 
+    @staticmethod
+    def load_rowd(rowd):
+        """Given a rowd dict from a CSV, return a PersonFacility object
+        """
+        def normalize_fieldname(rowd, data, fieldname, choices):
+            for field in choices:
+                if rowd.get(field):
+                    data[fieldname] = rowd.get(field)
+        data = {}
+        normalize_fieldname(rowd, data, 'person_id',   ['nr_id', 'person_id'])
+        normalize_fieldname(rowd, data, 'facility_id', ['facility', 'facility_id'])
+        normalize_fieldname(rowd, data, 'entry_date',  ['facility_entry_date', 'entry_date'])
+        normalize_fieldname(rowd, data, 'exit_date',   ['facility_exit_date', 'exit_date'])
+        # update or new
+        try:
+            p = Person.objects.get(nr_id=data['person_id'])
+            f = Facility.objects.get(facility_id=data['facility_id'])
+            pf = PersonFacility.objects.get(
+                person=p, facility=f,
+            )
+        except PersonFacility.DoesNotExist:
+            pf = PersonFacility()
+        for key,val in data.items():
+            setattr(pf, key, val)
+        return pf
+
+    def save(self, *args, **kwargs):
+        """Save PersonFacility"""
+        super(PersonFacility, self).save()
+
 
 class FarRecord(models.Model):
     far_record_id           = models.CharField(max_length=255, primary_key=1, verbose_name='FAR Record ID', help_text="Derived from FAR ledger id + line id ('original_order')")
@@ -836,6 +866,7 @@ def format_model_fields(fields):
 MODEL_CLASSES = {
     'facility': Facility,
     'person': Person,
+    'personfacility': PersonFacility,
     'farrecord': FarRecord,
     'wrarecord': WraRecord,
 }
