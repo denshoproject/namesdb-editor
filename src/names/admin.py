@@ -49,6 +49,7 @@ class RevisionAdmin(admin.ModelAdmin):
 
 class RevisionInline(GenericTabularInline):
     model = Revision
+    ordering = ('-timestamp',)
     extra = 0
     show_change_link = True
     readonly_fields = ('timestamp',)
