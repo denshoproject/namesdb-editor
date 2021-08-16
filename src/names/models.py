@@ -360,8 +360,8 @@ class Person(models.Model):
 class PersonFacility(models.Model):
     person     = models.ForeignKey(Person, on_delete=models.DO_NOTHING)
     facility   = models.ForeignKey(Facility, on_delete=models.DO_NOTHING)
-    entry_date = models.DateField(blank=1, verbose_name='Facility Entry Date', help_text='Date of entry to detention facility')
-    exit_date  = models.DateField(blank=1, verbose_name='Facility Exit Date',  help_text='Date of exit from detention facility')
+    entry_date = models.DateField(blank=1, null=1, verbose_name='Facility Entry Date', help_text='Date of entry to detention facility')
+    exit_date  = models.DateField(blank=1, null=1, verbose_name='Facility Exit Date',  help_text='Date of exit from detention facility')
 
     @staticmethod
     def load_rowd(rowd):
