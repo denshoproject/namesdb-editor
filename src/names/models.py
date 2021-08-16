@@ -15,6 +15,8 @@ from django.utils import timezone
 
 from names import csvfile,fileio,noidminter
 from namesdb_public.models import Person as ESPerson, FIELDS_PERSON
+from namesdb_public.models import PersonFacility as ESPersonFacility
+from namesdb_public.models import FIELDS_PERSONFACILITY
 from namesdb_public.models import FarRecord as ESFarRecord, FIELDS_FARRECORD
 from namesdb_public.models import WraRecord as ESWraRecord, FIELDS_WRARECORD
 from namesdb_public.models import FIELDS_BY_MODEL
@@ -367,6 +369,14 @@ class PersonFacility(models.Model):
     entry_date = models.DateField(blank=1, null=1, verbose_name='Facility Entry Date', help_text='Date of entry to detention facility')
     exit_date  = models.DateField(blank=1, null=1, verbose_name='Facility Exit Date',  help_text='Date of exit from detention facility')
 
+    def __repr__(self):
+        return f'<{self.__class__.__name__}(person={self.person}, facility={self.facility})>'
+
+    def __str__(self):
+        return '({} {})'.format(
+            self.person, self.facility
+        )
+
     @staticmethod
     def load_rowd(rowd):
         """Given a rowd dict from a CSV, return a PersonFacility object
@@ -381,23 +391,36 @@ class PersonFacility(models.Model):
         normalize_fieldname(rowd, data, 'entry_date',  ['facility_entry_date', 'entry_date'])
         normalize_fieldname(rowd, data, 'exit_date',   ['facility_exit_date', 'exit_date'])
         # update or new
+        p = Person.objects.get(nr_id=data['person_id'])
+        f = Facility.objects.get(facility_id=data['facility_id'])
         try:
-            p = Person.objects.get(nr_id=data['person_id'])
-            f = Facility.objects.get(facility_id=data['facility_id'])
-            pf = PersonFacility.objects.get(
-                person=p, facility=f,
-            )
+            pf = PersonFacility.objects.get(person=p, facility=f)
         except PersonFacility.DoesNotExist:
-            pf = PersonFacility()
+            pf = PersonFacility(person=p, facility=f)
         for key,val in data.items():
             if key in ['entry_date', 'exit_date']:
-                val = parser.parse(val)
-            setattr(pf, key, val)
+                try:
+                    val = parser.parse(val)
+                    setattr(pf, key, val)
+                except parser._parser.ParserError:
+                    pass
         return pf
 
     def save(self, *args, **kwargs):
         """Save PersonFacility"""
         super(PersonFacility, self).save()
+
+    def dict(self, n=None):
+        """JSON-serializable dict
+        """
+        d = {}
+        if n:
+            d['n'] = n
+        for fieldname in FIELDS_PERSONFACILITY:
+            if getattr(self, fieldname):
+                value = getattr(self, fieldname)
+                d[fieldname] = value
+        return d
 
 
 class FarRecord(models.Model):
