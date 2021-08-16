@@ -120,23 +120,42 @@ NOTE_DEFAULT = 'Load from CSV'
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
-@click.option('--limit','-l', default=None, help='Limit number of records.')
+@click.option('--offset','-o', default=0, help='Start at specified record.')
+@click.option('--limit','-l', default=1_000_000, help='Limit number of records.')
 @click.option('--note','-n', default=NOTE_DEFAULT,
               help=f'Optional note (default: "{NOTE_DEFAULT}".')
 @click.argument('model')
 @click.argument('csv_path')
 @click.argument('username')
-def load(debug, limit, note, model, csv_path, username):
+def load(debug, offset, limit, note, model, csv_path, username):
     """Load data from a CSV file
     """
-    if limit:
-        limit = int(limit)
+    if offset: offset = int(offset)
+    if limit: limit = int(limit)
     sql_class = models.MODEL_CLASSES[model]
-    for rowd in tqdm(
-            csvfile.make_rowds(fileio.read_csv(csv_path, limit)),
-            desc='Writing database', ascii=True, unit='record'
-    ):
-        sql_class.load_rowd(rowd).save(username=username, note=note)
+    rowds = csvfile.make_rowds(fileio.read_csv(csv_path))
+    num = len(rowds)
+    processed = 0
+    failed = []
+    for n,rowd in enumerate(tqdm(
+            rowds, desc='Writing database', ascii=True, unit='record'
+    )):
+        if n >= offset:
+            try:
+                o = sql_class.load_rowd(rowd)
+                o.save(username=username, note=note)
+            except:
+                err = sys.exc_info()[0]
+                click.echo(f'FAIL {rowd} {err}')
+                failed.append( (n,rowd, err) )
+                raise
+            processed = processed + 1
+        if processed > limit:
+            break
+    if failed:
+        click.echo('FAILED ROWS')
+    for f in failed:
+        click.echo(f)
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
