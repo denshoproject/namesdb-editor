@@ -171,10 +171,14 @@ class Person(models.Model):
             names = names.replace("'",'').replace('"','').split(',')
             if names:
                 o.other_names = '\n'.join(names)
-        if rowd.get('birth_date'):
+        try:
             o.birth_date = parser.parse(rowd.pop('birth_date'))
-        if rowd.get('death_date'):
+        except parser._parser.ParserError:
+            pass
+        try:
             o.death_date = parser.parse(rowd.pop('death_date'))
+        except parser._parser.ParserError:
+            pass
         if rowd.get('facility'):
             f = PersonFacility
             o.facility = None
@@ -386,6 +390,8 @@ class PersonFacility(models.Model):
         except PersonFacility.DoesNotExist:
             pf = PersonFacility()
         for key,val in data.items():
+            if key in ['entry_date', 'exit_date']:
+                val = parser.parse(val)
             setattr(pf, key, val)
         return pf
 
