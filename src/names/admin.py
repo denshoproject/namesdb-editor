@@ -162,12 +162,13 @@ class WraRecordAdminForm(forms.ModelForm):
 @admin.register(WraRecord)
 class WraRecordAdmin(admin.ModelAdmin):
     list_display = (
-        'wra_record_id', 'facility', 'lastname', 'firstname', 'middleinitial', 'birthyear',
+        'wra_filenumber', 'facility',
+        'lastname', 'firstname', 'middleinitial', 'birthyear',
     )
-    list_display_links = ('wra_record_id',)
+    list_display_links = ('wra_filenumber',)
     list_filter = ('facility', 'assemblycenter', 'birthcountry',)
     search_fields = (
-        'facility',
+        'wra_filenumber', 'facility',
         'lastname', 'firstname', 'middleinitial',
         'birthyear', 'gender', 'originalstate', 'familyno', 'individualno',
         'notes', 'assemblycenter', 'originaladdress', 'birthcountry',
@@ -176,7 +177,6 @@ class WraRecordAdmin(admin.ModelAdmin):
         'militaryservice', 'maritalstatus', 'ethnicity', 'birthplace',
         'citizenshipstatus', 'highestgrade', 'language', 'religion',
         'occupqual1', 'occupqual2', 'occupqual3', 'occuppotn1', 'occuppotn2',
-        'wra_filenumber',
     )
     autocomplete_fields = ['person',]
     readonly_fields = ('timestamp',)
@@ -185,7 +185,7 @@ class WraRecordAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {'fields': (
             ('person', 'timestamp'),
-            'wra_record_id',
+            ('wra_filenumber', 'wra_record_id'),
             'facility',
             ('lastname', 'firstname', 'middleinitial'),
             'birthyear',
@@ -210,7 +210,6 @@ class WraRecordAdmin(admin.ModelAdmin):
             'religion',
             ('occupqual1', 'occupqual2', 'occupqual3'),
             ('occuppotn1', 'occuppotn2'),
-            'wra_filenumber',
         )}),
     )
 

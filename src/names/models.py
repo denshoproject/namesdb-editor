@@ -612,6 +612,7 @@ class FarRecordPerson():
 
 class WraRecord(models.Model):
     wra_record_id     = models.CharField(max_length=255, primary_key=1, verbose_name='WRA Record ID', help_text="Derived from WRA ledger id + line id ('original_order')")
+    wra_filenumber    = models.CharField(max_length=255,          verbose_name='WRA Filenumber', help_text='WRA-assigned 6-digit filenumber identifier')
     facility          = models.CharField(max_length=255,          verbose_name='Facility identifier', help_text='Facility identifier')
     lastname          = models.CharField(max_length=255, blank=1, verbose_name='Last name, truncated to 10 chars', help_text='Last name, truncated to 10 chars')
     firstname         = models.CharField(max_length=255, blank=1, verbose_name='First name, truncated to 8 chars', help_text='First name, truncated to 8 chars')
@@ -646,7 +647,6 @@ class WraRecord(models.Model):
     occupqual3        = models.CharField(max_length=255, blank=1, verbose_name='Tertiary qualified occupation', help_text='Tertiary qualified occupation')
     occuppotn1        = models.CharField(max_length=255, blank=1, verbose_name='Primary potential occupation', help_text='Primary potential occupation')
     occuppotn2        = models.CharField(max_length=255, blank=1, verbose_name='Secondary potential occupation', help_text='Secondary potential occupation')
-    wra_filenumber    = models.CharField(max_length=255,          verbose_name='WRA Filenumber', help_text='WRA-assigned 6-digit filenumber identifier')
     person = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
     timestamp         = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
 
