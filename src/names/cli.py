@@ -130,6 +130,10 @@ NOTE_DEFAULT = 'Load from CSV'
 def load(debug, offset, limit, note, model, csv_path, username):
     """Load data from a CSV file
     """
+    available_models = list(models.MODEL_CLASSES.keys())
+    if model not in available_models:
+        click.echo(f'{model} is not one of {available_models}')
+        sys.exit(1)
     if offset: offset = int(offset)
     if limit: limit = int(limit)
     sql_class = models.MODEL_CLASSES[model]
