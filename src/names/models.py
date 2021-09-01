@@ -788,10 +788,10 @@ class WraRecordPerson():
                 if rowd.get(field):
                     data[fieldname] = rowd.get(field)
         data = {}
-        normalize_fieldname(rowd, data, 'wra_filenumber',['wra_filenumber', 'fk_wra_id', 'id'])
+        normalize_fieldname(rowd, data, 'wra_record_id',['wra_filenumber', 'fk_wra_id', 'id'])
         normalize_fieldname(rowd, data, 'person_id',   ['nr_id', 'person_id'])
         # update or new
-        w = WraRecord.objects.get(wra_filenumber=data['wra_filenumber'])
+        w = WraRecord.objects.get(wra_filenumber=data['wra_record_id'])
         p = Person.objects.get(nr_id=data['person_id'])
         w.person = p
         return w
