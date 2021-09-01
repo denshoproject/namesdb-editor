@@ -1,6 +1,9 @@
 import logging
 logger = logging.getLogger(__name__)
+from ssl import create_default_context
 import sys
+
+from django.conf import settings
 
 from elasticsearch import Elasticsearch, TransportError, NotFoundError
 import elasticsearch_dsl
@@ -11,18 +14,41 @@ from . import models
 DOCSTORE_TIMEOUT = 5
 INDEX_PREFIX = 'names'
 
+def get_elasticsearch():
+    # TODO simplify this once everything is using SSL/passwords
+    if settings.DOCSTORE_SSL_CERTFILE and settings.DOCSTORE_PASSWORD:
+        context = create_default_context(cafile=settings.DOCSTORE_SSL_CERTFILE)
+        context.check_hostname = False
+        return Elasticsearch(
+            settings.DOCSTORE_HOST,
+            scheme='https', ssl_context=context,
+            port=9200,
+            http_auth=(settings.DOCSTORE_USERNAME, settings.DOCSTORE_PASSWORD),
+        )
+    elif settings.DOCSTORE_SSL_CERTFILE:
+        context = create_default_context(cafile=settings.DOCSTORE_SSL_CERTFILE)
+        context.check_hostname = False
+        return Elasticsearch(
+            settings.DOCSTORE_HOST,
+            scheme='https', ssl_context=context,
+            port=9200,
+        )
+    else:
+        return Elasticsearch(
+            settings.DOCSTORE_HOST,
+            scheme='http',
+            port=9200,
+        )
+
 
 class Docstore():
     hosts = None
     facets = None
     es = None
 
-    def __init__(self, hosts, connection=None):
+    def __init__(self, hosts=settings.DOCSTORE_HOST):
         self.hosts = hosts
-        if connection:
-            self.es = connection
-        else:
-            self.es = Elasticsearch(hosts, timeout=DOCSTORE_TIMEOUT)
+        self.es = get_elasticsearch()
     
     def index_name(self, model):
         return '{}{}'.format(INDEX_PREFIX, model)
