@@ -25,6 +25,19 @@ def csv_reader(csvfile):
     )
     return reader
 
+def csv_writer(csvfile):
+    """Get a csv.writer object for the file.
+    
+    @param csvfile: A file object.
+    """
+    writer = csv.writer(
+        csvfile,
+        delimiter=CSV_DELIMITER,
+        quoting=CSV_QUOTING,
+        quotechar=CSV_QUOTECHAR,
+    )
+    return writer
+
 def read_csv(path: str, limit: Optional[int]=None) -> List[Dict[str,str]]:
     """Read specified file, returns list of rows.
     

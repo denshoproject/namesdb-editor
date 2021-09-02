@@ -6,8 +6,8 @@ Sample usage:
     # Import data from CSV
     $ namesdb import far far-records.csv
 
-    # Export data without Django-specific tables
-    $ namesdb export
+    # Copy SQLite3 database, removing Django-specific tables
+    $ namesdb exportdb
 
     # Create and destroy Elasticsearch indexes
     $ namesdb create -H localhost:9200
@@ -49,7 +49,9 @@ from django.conf import settings
 import requests
 from tqdm import tqdm
 
+from . import csvfile
 from . import docstore
+from . import fileio
 from . import models
 from . import publish
 from namesdb_public import models as models_public
@@ -73,22 +75,92 @@ def help():
     click.echo(HELP)
 
 @namesdb.command()
+@click.argument('model')
+def schema(model):
+    """Print schema for specified model
+    """
+    class_ = models.MODEL_CLASSES[model]
+    fields = models.model_fields(class_)
+    schema = models.format_model_fields(fields)
+    click.echo(schema)
+
+@namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
-@click.option('--limit','-l', default=None)
+@click.option('--cols','-c', default=None, help='Export only specified fields.')
+@click.option('--limit','-l', default=None, help='Limit number of records.')
+@click.argument('model')
+@click.argument('csv_path')
+def dump(debug, cols, limit, model, csv_path):
+    """Dump data to a CSV file
+    """
+    model_class = models.MODEL_CLASSES[model]
+    if debug: print(f'model_class {model_class}')
+    EXCLUDED_FIELDS = [
+        'timestamp',  # why would we export this
+    ]
+    model_fieldnames = [
+        f[0]
+        for f in models.model_fields(model_class)
+        if not f[0] in EXCLUDED_FIELDS
+    ]
+    id_fieldname = model_fieldnames[0]
+    if cols:
+        cols = [f for f in cols.strip().split(',') if f in model_fieldnames]
+        if id_fieldname not in cols:
+            cols.insert(0, id_fieldname)
+    else:
+        cols = model_fieldnames
+    if debug: print(f'cols {cols}')
+    if limit:
+        limit = int(limit)
+    if debug: print(f'limit {limit}')
+    models.write_csv(csv_path, model_class, cols, limit, debug)
+
+NOTE_DEFAULT = 'Load from CSV'
+
+@namesdb.command()
+@click.option('--debug','-d', is_flag=True, default=False)
+@click.option('--offset','-o', default=0, help='Start at specified record.')
+@click.option('--limit','-l', default=1_000_000, help='Limit number of records.')
+@click.option('--note','-n', default=NOTE_DEFAULT,
+              help=f'Optional note (default: "{NOTE_DEFAULT}".')
 @click.argument('model')
 @click.argument('csv_path')
 @click.argument('username')
-def load(debug, limit, model, csv_path, username):
+def load(debug, offset, limit, note, model, csv_path, username):
     """Load data from a CSV file
     """
-    if limit:
-        limit = int(limit)
+    available_models = list(models.MODEL_CLASSES.keys())
+    if model not in available_models:
+        click.echo(f'{model} is not one of {available_models}')
+        sys.exit(1)
+    if offset: offset = int(offset)
+    if limit: limit = int(limit)
     sql_class = models.MODEL_CLASSES[model]
-    for rowd in tqdm(
-            models.load_csv(csv_path, limit),
-            desc='Writing database', ascii=True, unit='record'
-    ):
-        models.save_rowd(rowd, sql_class, username)
+    rowds = csvfile.make_rowds(fileio.read_csv(csv_path))
+    num = len(rowds)
+    processed = 0
+    failed = []
+    prepped_data = sql_class.prep_data()
+    for n,rowd in enumerate(tqdm(
+            rowds, desc='Writing database', ascii=True, unit='record'
+    )):
+        if n >= offset:
+            try:
+                o,prepped_data = sql_class.load_rowd(rowd, prepped_data)
+                o.save(username=username, note=note)
+            except:
+                err = sys.exc_info()[0]
+                click.echo(f'FAIL {rowd} {err}')
+                failed.append( (n,rowd, err) )
+                raise
+            processed = processed + 1
+        if processed > limit:
+            break
+    if failed:
+        click.echo('FAILED ROWS')
+    for f in failed:
+        click.echo(f)
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
@@ -157,11 +229,11 @@ def status(hosts):
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
-@click.option('--limit','-l', help='Limit number of records.')
+@click.option('--limit','-l', default=None, help='Limit number of records.')
 @click.option('--debug','-d', is_flag=True, default=False)
 @click.argument('model')
 def post(hosts, limit, debug, model):
-    """Publish data from SQL database to Elasticsearch.
+    """Post data from SQL database to Elasticsearch.
     """
     model = model_w_abbreviations(model.lower().strip())
     hosts = hosts_index(hosts)
@@ -245,7 +317,7 @@ def delete(hosts, model, record_id):
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
-def export(debug):
+def exportdb(debug):
     """Copy SQLite3 database, removing Django-specific tables
     """
     src = settings.DATABASES['names']['NAME']

@@ -19,6 +19,7 @@ class RevisionAdmin(admin.ModelAdmin):
         'content_object',
         'username',
         'timestamp',
+        'note',
     )
     list_display_links = ('content_object',)
     list_filter = (
@@ -30,7 +31,7 @@ class RevisionAdmin(admin.ModelAdmin):
         'object_id',
         #'content_object',
         'username',
-        #'note',
+        'note',
         'diff',
     )
     date_hierarchy = 'timestamp'
@@ -41,19 +42,20 @@ class RevisionAdmin(admin.ModelAdmin):
             ('content_type', 'object_id'),
             ('username'),
             'diff',
-            #'note',
+            'note',
         )}),
     )
 
 
 class RevisionInline(GenericTabularInline):
     model = Revision
+    ordering = ('-timestamp',)
     extra = 0
     show_change_link = True
     readonly_fields = ('timestamp',)
     max_num=5
     fields = (
-        'timestamp', 'username', 'diff',
+        'timestamp', 'diff', 'username', 'note',
     )
 
     def has_add_permission(self, request, obj): return False
@@ -100,7 +102,7 @@ class FarRecordAdmin(admin.ModelAdmin):
         'facility', 'original_order', 'family_number', 'far_line_id',
         'last_name', 'first_name', 'other_names',
         'date_of_birth', 'year_of_birth',
-        'sex', 'marital_status', 'citizenship', 'alien_registration',
+        'sex', 'marital_status', 'citizenship', 'alien_registration_no',
         'entry_type_code', 'entry_type', 'entry_category', 'entry_facility',
         'pre_evacuation_address', 'pre_evacuation_state', 'date_of_original_entry',
         'departure_type_code', 'departure_type', 'departure_category',
@@ -121,7 +123,7 @@ class FarRecordAdmin(admin.ModelAdmin):
             ('last_name', 'first_name','other_names',),
             ('date_of_birth', 'year_of_birth',),
             ('sex', 'marital_status',),
-            ('citizenship', 'alien_registration',),
+            ('citizenship', 'alien_registration_no',),
             ('entry_type_code', 'entry_type',),
             'entry_category',
             'entry_facility',
@@ -140,8 +142,9 @@ class FarRecordAdmin(admin.ModelAdmin):
     )
 
     def save_model(self, request, obj, form, change):
-        # request.user is used by Revision
+        # request.user and notes are used by Revision
         obj.user = request.user
+        obj.note = 'NOTE TEXT FROM names.admin.FarRecordAdmin.save_model'
         super().save_model(request, obj, form, change)
 
 
@@ -159,21 +162,21 @@ class WraRecordAdminForm(forms.ModelForm):
 @admin.register(WraRecord)
 class WraRecordAdmin(admin.ModelAdmin):
     list_display = (
-        'wra_record_id', 'facility', 'lastname', 'firstname', 'middleinitial', 'birthyear',
+        'wra_filenumber', 'facility',
+        'lastname', 'firstname', 'middleinitial', 'birthyear',
     )
-    list_display_links = ('wra_record_id',)
+    list_display_links = ('wra_filenumber',)
     list_filter = ('facility', 'assemblycenter', 'birthcountry',)
     search_fields = (
-        'facility',
+        'wra_filenumber', 'facility',
         'lastname', 'firstname', 'middleinitial',
         'birthyear', 'gender', 'originalstate', 'familyno', 'individualno',
         'notes', 'assemblycenter', 'originaladdress', 'birthcountry',
         'fatheroccupus', 'fatheroccupabr', 'yearsschooljapan', 'gradejapan',
         'schooldegree', 'yearofusarrival', 'timeinjapan', 'ageinjapan',
-        'militaryservice', 'martitalstatus', 'ethnicity', 'birthplace',
+        'militaryservice', 'maritalstatus', 'ethnicity', 'birthplace',
         'citizenshipstatus', 'highestgrade', 'language', 'religion',
-        'occupqual1', 'occupqual2', 'occupqual3', 'occupotn1', 'occupotn2',
-        'wra_filenumber',
+        'occupqual1', 'occupqual2', 'occupqual3', 'occuppotn1', 'occuppotn2',
     )
     autocomplete_fields = ['person',]
     readonly_fields = ('timestamp',)
@@ -182,7 +185,7 @@ class WraRecordAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {'fields': (
             ('person', 'timestamp'),
-            'wra_record_id',
+            ('wra_filenumber', 'wra_record_id'),
             'facility',
             ('lastname', 'firstname', 'middleinitial'),
             'birthyear',
@@ -198,7 +201,7 @@ class WraRecordAdmin(admin.ModelAdmin):
             'yearofusarrival',
             ('timeinjapan', 'ageinjapan'),
             'militaryservice',
-            'martitalstatus',
+            'maritalstatus',
             'ethnicity',
             'birthplace',
             'citizenshipstatus',
@@ -206,14 +209,14 @@ class WraRecordAdmin(admin.ModelAdmin):
             'language',
             'religion',
             ('occupqual1', 'occupqual2', 'occupqual3'),
-            ('occupotn1', 'occupotn2'),
-            'wra_filenumber',
+            ('occuppotn1', 'occuppotn2'),
         )}),
     )
 
     def save_model(self, request, obj, form, change):
-        # request.user is used by Revision
+        # request.user and notes are used by Revision
         obj.user = request.user
+        obj.note = 'NOTE TEXT FROM names.admin.WraRecordAdmin.save_model'
         super().save_model(request, obj, form, change)
 
 
@@ -267,6 +270,15 @@ class WraRecordInline(admin.TabularInline):
     def has_delete_permission(self, request, obj): return False
 
 
+class PersonAdminForm(forms.ModelForm):
+    """Add Revision `note` field to autogenerated PersonForm"""
+    note = forms.CharField(max_length=255, required=True, label='Summary',
+                           help_text='Explain the <b>reason</b> for these edits.')
+    class Meta:
+        model = Person
+        fields = []
+
+
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
     list_display = (
@@ -305,10 +317,13 @@ class PersonAdmin(admin.ModelAdmin):
             ('preexclusion_residence_city', 'preexclusion_residence_state'),
             ('postexclusion_residence_city', 'postexclusion_residence_state'),
             ('exclusion_order_title', 'exclusion_order_id'),
+            'note',
         )}),
     )
+    form = PersonAdminForm
 
     def save_model(self, request, obj, form, change):
-        # request.user is used by Revision
+        # request.user and notes are used by Revision
         obj.user = request.user
+        obj.note = form.cleaned_data['note']
         super().save_model(request, obj, form, change)

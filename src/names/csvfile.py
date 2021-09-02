@@ -2,8 +2,6 @@ from collections import OrderedDict
 import logging
 from typing import Any, Dict, List, Match, Optional, Set, Tuple, Union
 
-from tqdm import tqdm
-
 
 def make_row_dict(headers: List[str], row: List[str]) -> OrderedDict:
     """Turns CSV row into a dict with the headers as keys
@@ -34,10 +32,7 @@ def make_rowds(
     headers = [_strip_str(data) for data in rows.pop(0)]
     rowds = []
     errors = []
-    for row in tqdm(
-            rows[row_start:row_end],
-            desc='Reading CSV', ascii=True, unit='rows'
-    ):
+    for row in rows[row_start:row_end]:
         try:
             rowds.append(make_row_dict(headers, row))
         except Exception as err:

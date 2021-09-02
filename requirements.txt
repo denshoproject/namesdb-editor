@@ -8,6 +8,7 @@ elasticsearch-dsl>=7.0.0,<8.0.0 # NOTE: match ddrpublic version
 gunicorn
 python-dateutil
 requests
+tabulate
 tqdm
 
 bpython

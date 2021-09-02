@@ -2,14 +2,21 @@ from datetime import datetime
 import difflib
 import json
 
+from dateutil import parser
+from requests.exceptions import ConnectionError
+from tabulate import tabulate
+
+from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import connections, models
 from django.urls import reverse
 from django.utils import timezone
 
-from names import csvfile,fileio
+from names import csvfile,fileio,noidminter
 from namesdb_public.models import Person as ESPerson, FIELDS_PERSON
+from namesdb_public.models import PersonFacility as ESPersonFacility
+from namesdb_public.models import FIELDS_PERSONFACILITY
 from namesdb_public.models import FarRecord as ESFarRecord, FIELDS_FARRECORD
 from namesdb_public.models import WraRecord as ESWraRecord, FIELDS_WRARECORD
 from namesdb_public.models import FIELDS_BY_MODEL
@@ -31,6 +38,8 @@ ELASTICSEARCH_CLASSES_BY_MODEL = {
 
 class NamesRouter:
     """Write all Names DB data to separate DATABASES['names'] database.
+    
+    Write Django-specific data to one file and Person/FAR/WRA data to another.
     """
     def db_for_read(self, model, **hints):
         if model._meta.app_label == 'names':
@@ -63,9 +72,44 @@ class Facility(models.Model):
         verbose_name = 'Facility'
         verbose_name_plural = 'Facilities'
 
+    @staticmethod
+    def prep_data():
+        """Prepare data for loading CSV full of Facilities
+        """
+        return {}
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
+        """Given a rowd dict from a CSV, return a Facility object
+        """
+        def normalize_fieldname(rowd, data, fieldname, choices):
+            for field in choices:
+                if rowd.get(field):
+                    data[fieldname] = rowd.get(field)
+        data = {}
+        normalize_fieldname(rowd, data, 'facility_id',   ['facility_id', 'id'])
+        normalize_fieldname(rowd, data, 'facility_name', ['facility_name', 'name'])
+        normalize_fieldname(rowd, data, 'facility_type', ['facility_type', 'type', 'category'])
+        if not data.get('facility_type'):
+            data['facility_type'] = 'other'
+        # update or new
+        try:
+            facility = Facility.objects.get(
+                facility_id=data['facility_id']
+            )
+        except Facility.DoesNotExist:
+            facility = Facility()
+        for key,val in data.items():
+            setattr(facility, key, val)
+        return facility,prepped_data
+
+    def save(self, *args, **kwargs):
+        """Save Facility, ignoring usernames and notes"""
+        super(Facility, self).save()
+
 
 class Person(models.Model):
-    nr_id                         = models.CharField(max_length=30, primary_key=True,      verbose_name='Names Registry ID',         help_text='Names Registry unique identifier')
+    nr_id                         = models.CharField(max_length=255, primary_key=True,      verbose_name='Names Registry ID',         help_text='Names Registry unique identifier')
     family_name                   = models.CharField(max_length=30,                        verbose_name='Last Name',                 help_text='Preferred family or last name')
     given_name                    = models.CharField(max_length=30,                        verbose_name='First Name',                help_text='Preferred given or first name')
     given_name_alt                = models.TextField(max_length=30, blank=True, null=True, verbose_name='Alternative First Names',   help_text='List of alternative first names')
@@ -111,32 +155,96 @@ class Person(models.Model):
         )
 
     def admin_url(self):
-         return reverse('admin:names_person_change', args=(self.id,))
+         return reverse('admin:names_person_change', args=(self.nr_id,))
 
-    def save(self, username=None, *args, **kwargs):
+    def dump_rowd(self, fieldnames):
+        """Return a rowd dict suitable for inclusion in a CSV
+        """
+        return {
+            fieldname: getattr(self, fieldname, '') for fieldname in fieldnames
+        }
+
+    @staticmethod
+    def prep_data():
+        """Prepare data for loading CSV full of Persons
+        """
+        return {}
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
+        """Given a rowd dict from a CSV, return a Person object
+        """
+        try:
+            o = Person.objects.get(nr_id=rowd['nr_id'])
+        except Person.DoesNotExist:
+            o = Person()
+        # special cases
+        if rowd.get('other_names'):
+            names = rowd.pop('other_names')
+            names = names.replace('[','').replace(']','')
+            names = names.replace("'",'').replace('"','').split(',')
+            if names:
+                o.other_names = '\n'.join(names)
+        try:
+            o.birth_date = parser.parse(rowd.pop('birth_date'))
+        except parser._parser.ParserError:
+            pass
+        try:
+            o.death_date = parser.parse(rowd.pop('death_date'))
+        except parser._parser.ParserError:
+            pass
+        if rowd.get('facility'):
+            f = PersonFacility
+            o.facility = None
+        # everything else
+        for key,val in rowd.items():
+            if val:
+                if isinstance(val, str):
+                    val = val.replace('00:00:00', '').strip()
+                setattr(o, key, val)
+        return o,prepped_data
+
+    def save(self, *args, **kwargs):
+        """Save Person, adding NOID if absent and Revision with request.user
+        """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
         if getattr(self, 'user', None):
             username = getattr(self, 'user').username
+        # ...or comes from names.cli.load
+        elif kwargs.get('username'):
+            username = kwargs['username']
+        else:
+            username = 'UNKNOWN'
+        # note is added to obj in names.admin.FarRecordAdmin.save_model
+        if getattr(self, 'note', None):
+            note = getattr(self, 'note')
+        # ...or comes from names.cli.load
+        elif kwargs.get('note'):
+            note = kwargs['note']
+        else:
+            note = 'DEFAULT NOTE TEXT'
+        
         # New NR ID if none exists
         if not self.nr_id:
-            self.nr_id = self._make_nr_id(username)
-        # get existing record
+            self.nr_id = self._get_noid()
+        # has the record changed?
         try:
             old = Person.objects.get(nr_id=self.nr_id)
         except Person.DoesNotExist:
             old = None
-        # should be field in admin
-        note = ''
+        changed = Revision.object_has_changed(self, old, Person)
+        # now save
         self.timestamp = timezone.now()
         super(Person, self).save()
-        r = Revision(
-            content_object=self,
-            username=username, note=note, diff=make_diff(old, self)
-        )
-        r.save()
+        if changed:
+            r = Revision(
+                content_object=self,
+                username=username, note=note, diff=make_diff(old, self)
+            )
+            r.save()
 
     def _make_nr_id(self, username):
-        """Generate a new unique ID
+        """[Deprecated] Generate a new unique ID
         """
         import hashlib
         m = hashlib.sha256()
@@ -145,7 +253,20 @@ class Person(models.Model):
         m.update(bytes(timezone.now().isoformat(), 'utf-8'))
         return m.hexdigest()[:10]
 
+    def _get_noid(self):
+        """Get a fresh NOID from ddr-idservice noidminter API
+        """
+        try:
+            return noidminter.get_noid()
+        except ConnectionError:
+            raise Exception(
+                f'Could not connect to ddr-idservice at {settings.NOIDMINTER_URL}.' \
+                ' Please check settings.'
+            )
+
     def revisions(self):
+        """List of object Revisions
+        """
         return Revision.objects.filter(model='persopn', record_id=self.nr_id)
 
     @staticmethod
@@ -257,8 +378,83 @@ class Person(models.Model):
 class PersonFacility(models.Model):
     person     = models.ForeignKey(Person, on_delete=models.DO_NOTHING)
     facility   = models.ForeignKey(Facility, on_delete=models.DO_NOTHING)
-    entry_date = models.DateField(blank=1, verbose_name='Facility Entry Date', help_text='Date of entry to detention facility')
-    exit_date  = models.DateField(blank=1, verbose_name='Facility Exit Date',  help_text='Date of exit from detention facility')
+    entry_date = models.DateField(blank=1, null=1, verbose_name='Facility Entry Date', help_text='Date of entry to detention facility')
+    exit_date  = models.DateField(blank=1, null=1, verbose_name='Facility Exit Date',  help_text='Date of exit from detention facility')
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__}(person={self.person}, facility={self.facility})>'
+
+    def __str__(self):
+        return '({} {})'.format(
+            self.person, self.facility
+        )
+
+    @staticmethod
+    def combo_id(person_id, facility_id):
+        return f'{person_id}:{facility_id}'
+
+    @staticmethod
+    def prep_data():
+        """Prepare data for loading CSV full of PersonFacility data
+        """
+        return {
+            'facilities': {
+                f.facility_id:
+                f for f in Facility.objects.all()
+            },
+            'personfacilities': {
+                pf.combo_id(pf.person_id, pf.facility_id): pf
+                for pf in PersonFacility.objects.all()
+            },
+        }
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
+        """Given a rowd dict from a CSV, return a PersonFacility object
+        """
+        def normalize_fieldname(rowd, data, fieldname, choices):
+            for field in choices:
+                if rowd.get(field):
+                    data[fieldname] = rowd.get(field)
+        data = {}
+        normalize_fieldname(rowd, data, 'person_id',   ['nr_id', 'person_id'])
+        normalize_fieldname(rowd, data, 'facility_id', ['facility', 'facility_id'])
+        normalize_fieldname(rowd, data, 'entry_date',  ['facility_entry_date', 'entry_date'])
+        normalize_fieldname(rowd, data, 'exit_date',   ['facility_exit_date', 'exit_date'])
+        # update or new
+        p = Person.objects.get(nr_id=data['person_id'])
+        f = prepped_data['facilities'][data['facility_id']]
+        try:
+            pfid = PersonFacility.combo_id(p.nr_id, f.facility_id)
+            pf = prepped_data['personfacilities'][pfid]
+        except KeyError:
+            pf = PersonFacility(person=p, facility=f)
+            pfid = PersonFacility.combo_id(p.nr_id, f.facility_id)
+        for key,val in data.items():
+            if key in ['entry_date', 'exit_date']:
+                try:
+                    val = parser.parse(val)
+                    setattr(pf, key, val)
+                except parser._parser.ParserError:
+                    pass
+        prepped_data[pfid] = pf
+        return pf,prepped_data
+
+    def save(self, *args, **kwargs):
+        """Save PersonFacility"""
+        super(PersonFacility, self).save()
+
+    def dict(self, n=None):
+        """JSON-serializable dict
+        """
+        d = {}
+        if n:
+            d['n'] = n
+        for fieldname in FIELDS_PERSONFACILITY:
+            if getattr(self, fieldname):
+                value = getattr(self, fieldname)
+                d[fieldname] = value
+        return d
 
 
 class FarRecord(models.Model):
@@ -275,7 +471,7 @@ class FarRecord(models.Model):
     sex                     = models.CharField(max_length=255,          verbose_name='Gender', help_text='Gender identifier')
     marital_status          = models.CharField(max_length=255, blank=1, verbose_name='Marital Status', help_text='Marital status')
     citizenship             = models.CharField(max_length=255,          verbose_name='Citizenship Status', help_text='Citizenship status')
-    alien_registration      = models.CharField(max_length=255, blank=1, verbose_name='Alien Registration Number', help_text='INS-assigned Alien Registration number')
+    alien_registration_no   = models.CharField(max_length=255, blank=1, verbose_name='Alien Registration Number', help_text='INS-assigned Alien Registration number')
     entry_type_code         = models.CharField(max_length=255, blank=1, verbose_name='Entry Type (Coded)', help_text='Coded type of original admission and assignment to facility')
     entry_type              = models.CharField(max_length=255, blank=1, verbose_name='Entry Type', help_text='Normalized type of original entry')
     entry_category          = models.CharField(max_length=255, blank=1, verbose_name='Entry Category', help_text='Category of entry type; assigned by Densho')
@@ -311,26 +507,75 @@ class FarRecord(models.Model):
             self.last_name, self.first_name, self.sex, self.facility, self.far_record_id
         )
 
-    def save(self, username=None, *args, **kwargs):
+    def dump_rowd(self, fieldnames):
+        """Return a rowd dict suitable for inclusion in a CSV
+        """
+        return {
+            fieldname: getattr(self, fieldname, '') for fieldname in fieldnames
+        }
+
+    @staticmethod
+    def prep_data():
+        """Prepare data for loading CSV full of FarRecords
+        """
+        return {}
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
+        """Given a rowd dict from a CSV, return a FarRecord object
+        """
+        try:
+            o = FarRecord.objects.get(
+                far_record_id=rowd['far_record_id']
+            )
+        except FarRecord.DoesNotExist:
+            o = FarRecord()
+        for key,val in rowd.items():
+            if val:
+                if isinstance(val, str):
+                    val = val.replace('00:00:00', '').strip()
+                setattr(o, key, val)
+        return o,prepped_data
+
+    def save(self, *args, **kwargs):
+        """Save FarRecord, adding Revision with request.user
+        """
         # request.user added to obj in names.admin.FarRecordAdmin.save_model
         if getattr(self, 'user', None):
             username = getattr(self, 'user').username
-        # get existing record
+        # ...or comes from names.cli.load
+        elif kwargs.get('username'):
+            username = kwargs['username']
+        else:
+            username = 'UNKNOWN'
+        # note is added to obj in names.admin.FarRecordAdmin.save_model
+        if getattr(self, 'note', None):
+            note = getattr(self, 'note')
+        # ...or comes from names.cli.load
+        elif kwargs.get('note'):
+            note = kwargs['note']
+        else:
+            note = 'DEFAULT NOTE TEXT'
+        
+        # has the record changed?
         try:
             old = FarRecord.objects.get(far_record_id=self.far_record_id)
         except FarRecord.DoesNotExist:
             old = None
-        # should be field in admin
-        note = ''
+        changed = Revision.object_has_changed(self, old, FarRecord)
+        # now save
         self.timestamp = timezone.now()
         super(FarRecord, self).save()
-        r = Revision(
-            content_object=self,
-            username=username, note=note, diff=make_diff(old, self)
-        )
-        r.save()
+        if changed:
+            r = Revision(
+                content_object=self,
+                username=username, note=note, diff=make_diff(old, self)
+            )
+            r.save()
 
     def revisions(self):
+        """List of object Revisions
+        """
         return Revision.objects.filter(model='far', record_id=self.far_record_id)
 
     @staticmethod
@@ -380,11 +625,52 @@ class FarRecord(models.Model):
         )
 
 
+class FarRecordPerson():
+    """Fake class used for importing FarRecord->Person links"""
+
+    @staticmethod
+    def prep_data():
+        """Prepare data for loading CSV full of PersonFacility data
+        """
+        return {
+            'farrecords': {
+                r.far_record_id: r
+                for r in FarRecord.objects.all()
+            },
+            'persons': {
+                p.nr_id: p
+                for p in Person.objects.all()
+            },
+        }
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
+        """Prepare data for loading CSV full of FarRecordPerson data
+        """
+        def normalize_fieldname(rowd, data, fieldname, choices):
+            for field in choices:
+                if rowd.get(field):
+                    data[fieldname] = rowd.get(field)
+        data = {}
+        normalize_fieldname(rowd, data, 'far_record_id',['far_record_id', 'fk_far_id', 'id'])
+        normalize_fieldname(rowd, data, 'person_id',   ['nr_id', 'person_id'])
+        # update or new
+        r = prepped_data['farrecords'][data['far_record_id']]
+        p = prepped_data['persons'][data['person_id']]
+        r.person = p
+        return r,prepped_data
+
+    def save(self, *args, **kwargs):
+        """Save FarRecord"""
+        super(FarRecord, self).save()
+
+
 class WraRecord(models.Model):
-    wra_record_id     = models.IntegerField(primary_key=1,        verbose_name='WRA Form 26 ID', help_text='Unique identifier; absolute row in original RG210.JAPAN.WRA26 datafile')
+    wra_record_id     = models.CharField(max_length=255, primary_key=1, verbose_name='WRA Record ID', help_text="Derived from WRA ledger id + line id ('original_order')")
+    wra_filenumber    = models.CharField(max_length=255,          verbose_name='WRA Filenumber', help_text='WRA-assigned 6-digit filenumber identifier')
     facility          = models.CharField(max_length=255,          verbose_name='Facility identifier', help_text='Facility identifier')
-    lastname          = models.CharField(max_length=255, blank=1, verbose_name='Last name, truncated to 10 chars', help_text='Last name, truncated to 10 chars')
-    firstname         = models.CharField(max_length=255, blank=1, verbose_name='First name, truncated to 8 chars', help_text='First name, truncated to 8 chars')
+    lastname          = models.CharField(max_length=255, blank=1, verbose_name='Last name', help_text='Last name, truncated to 10 chars')
+    firstname         = models.CharField(max_length=255, blank=1, verbose_name='First name', help_text='First name, truncated to 8 chars')
     middleinitial     = models.CharField(max_length=255, blank=1, verbose_name='Middle initial', help_text='Middle initial')
     birthyear         = models.CharField(max_length=255, blank=1, verbose_name='Year of birth', help_text='Year of birth')
     gender            = models.CharField(max_length=255, blank=1, verbose_name='Gender', help_text='Gender')
@@ -404,7 +690,7 @@ class WraRecord(models.Model):
     timeinjapan       = models.CharField(max_length=255, blank=1, verbose_name='Time in Japan', help_text='Description of time in Japan')
     ageinjapan        = models.CharField(max_length=255, blank=1, verbose_name='Oldest age visiting or living in Japan', help_text='Age while visiting or living in Japan')
     militaryservice   = models.CharField(max_length=255, blank=1, verbose_name='Military service, pensions and disabilities', help_text='Military service, public assistance status and major disabilities')
-    martitalstatus    = models.CharField(max_length=255, blank=1, verbose_name='Marital status', help_text='Marital status')
+    maritalstatus     = models.CharField(max_length=255, blank=1, verbose_name='Marital status', help_text='Marital status')
     ethnicity         = models.CharField(max_length=255, blank=1, verbose_name='Ethnicity', help_text='Ethnicity')
     birthplace        = models.CharField(max_length=255, blank=1, verbose_name='Birthplace', help_text='Birthplace')
     citizenshipstatus = models.CharField(max_length=255, blank=1, verbose_name='Citizenship status', help_text='Citizenship status')
@@ -414,9 +700,8 @@ class WraRecord(models.Model):
     occupqual1        = models.CharField(max_length=255, blank=1, verbose_name='Primary qualified occupation', help_text='Primary qualified occupation')
     occupqual2        = models.CharField(max_length=255, blank=1, verbose_name='Secondary qualified occupation', help_text='Secondary qualified occupation')
     occupqual3        = models.CharField(max_length=255, blank=1, verbose_name='Tertiary qualified occupation', help_text='Tertiary qualified occupation')
-    occupotn1         = models.CharField(max_length=255, blank=1, verbose_name='Primary potential occupation', help_text='Primary potential occupation')
-    occupotn2         = models.CharField(max_length=255, blank=1, verbose_name='Secondary potential occupation', help_text='Secondary potential occupation')
-    wra_filenumber    = models.CharField(max_length=255,          verbose_name='WRA Filenumber', help_text='WRA-assigned 6-digit filenumber identifier')
+    occuppotn1        = models.CharField(max_length=255, blank=1, verbose_name='Primary potential occupation', help_text='Primary potential occupation')
+    occuppotn2        = models.CharField(max_length=255, blank=1, verbose_name='Secondary potential occupation', help_text='Secondary potential occupation')
     person = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
     timestamp         = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
 
@@ -433,26 +718,75 @@ class WraRecord(models.Model):
             self.lastname, self.firstname, self.gender, self.facility,self.wra_record_id
         )
 
-    def save(self, username=None, *args, **kwargs):
-        # request.user added to obj in names.admin.WraRecordAdmin.save_model
+    def dump_rowd(self, fieldnames):
+        """Return a rowd dict suitable for inclusion in a CSV
+        """
+        return {
+            fieldname: getattr(self, fieldname, '') for fieldname in fieldnames
+        }
+
+    @staticmethod
+    def prep_data():
+        """Prepare data for loading CSV full of FarRecords
+        """
+        return {}
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
+        """Given a rowd dict from a CSV, return a WraRecord object
+        """
+        try:
+            o = WraRecord.objects.get(
+                wra_record_id=rowd['wra_record_id']
+            )
+        except WraRecord.DoesNotExist:
+            o = WraRecord()
+        for key,val in rowd.items():
+            if val:
+                if isinstance(val, str):
+                    val = val.replace('00:00:00', '').strip()
+                setattr(o, key, val)
+        return o,prepped_data
+
+    def save(self, *args, **kwargs):
+        """Save WraRecord, adding Revision with request.user
+        """
+        # request.user added to obj in names.admin.FarRecordAdmin.save_model
         if getattr(self, 'user', None):
             username = getattr(self, 'user').username
-        # get existing record
+        # ...or comes from names.cli.load
+        elif kwargs.get('username'):
+            username = kwargs['username']
+        else:
+            username = 'UNKNOWN'
+        # note is added to obj in names.admin.FarRecordAdmin.save_model
+        if getattr(self, 'note', None):
+            note = getattr(self, 'note')
+        # ...or comes from names.cli.load
+        elif kwargs.get('note'):
+            note = kwargs['note']
+        else:
+            note = 'DEFAULT NOTE TEXT'
+        
+        # has the record changed?
         try:
             old = WraRecord.objects.get(wra_record_id=self.wra_record_id)
         except WraRecord.DoesNotExist:
             old = None
-        # should be field in admin
-        note = ''
+        changed = Revision.object_has_changed(self, old, WraRecord)
+        # now save
         self.timestamp = timezone.now()
         super(WraRecord, self).save()
-        r = Revision(
-            content_object=self,
-            username=username, note=note, diff=make_diff(old, self)
-        )
-        r.save()
+        if changed:
+            r = Revision(
+                content_object=self,
+                username=username, note=note, diff=make_diff(old, self)
+            )
+            r.save()
 
     def revisions(self):
+        """List of object Revisions
+        """
         return Revision.objects.filter(
             model='wra', record_id=self.wra_record_id
         )
@@ -503,6 +837,46 @@ class WraRecord(models.Model):
         )
 
 
+class WraRecordPerson():
+    """Fake class used for importing WraRecord->Person links"""
+
+    @staticmethod
+    def prep_data():
+        """Prepare data for loading CSV full of WraRecordPerson data
+        """
+        return {
+            'wrarecords': {
+                r.wra_record_id: r
+                for r in WraRecord.objects.all()
+            },
+            'persons': {
+                p.nr_id: p
+                for p in Person.objects.all()
+            },
+        }
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
+        """Given a rowd dict from a CSV, return a WraRecord object
+        """
+        def normalize_fieldname(rowd, data, fieldname, choices):
+            for field in choices:
+                if rowd.get(field):
+                    data[fieldname] = rowd.get(field)
+        data = {}
+        normalize_fieldname(rowd, data, 'wra_record_id',['wra_filenumber', 'fk_wra_id', 'id'])
+        normalize_fieldname(rowd, data, 'person_id',   ['nr_id', 'person_id'])
+        # update or new
+        r = prepped_data['wrarecords'][data['wra_record_id']]
+        p = prepped_data['persons'][data['person_id']]
+        r.person = p
+        return r,prepped_data
+
+    def save(self, *args, **kwargs):
+        """Save WraRecord"""
+        super(WraRecord, self).save()
+
+
 class Revision(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.CharField(max_length=30)
@@ -515,12 +889,43 @@ class Revision(models.Model):
     def __repr__(self):
         return f'<Revision {self.content_object} {self.timestamp} {self.username}>'
 
+    @staticmethod
+    def object_has_changed(new_object, old_object, object_class):
+        """Have values of any object fields changed?
+        """
+        if old_object:
+            changed = 0
+            fields_considered = []
+            fields_diff = []
+            fields_same = []
+            for field in object_class._meta.get_fields():
+                # ignore ManyToOneRel things, focus on django.db.models.fields.*
+                if not hasattr(field, 'column'):
+                    fields_considered.append(f'column - {field}')
+                    continue
+                # ignore timestamp changes
+                if field.name == 'timestamp':
+                    fields_considered.append(f'tmstmp - {field}')
+                    continue
+                # has value of this field (or lack thereof) changed?
+                old_value = getattr(new_object, field.name)
+                new_value = getattr(old_object, field.name)
+                if not (old_value == new_value):
+                    changed += 1
+                    fields_diff.append((field.name, old_value, new_value))
+                else:
+                    fields_same.append((field.name, old_value, new_value))
+            return changed
+        else:
+            return 1
+
+
 def _jsonfriendly_value(value):
     if not isinstance(value, str):
         value = str(value)
     return value
 
-def jsonlines(obj):
+def jsonlines(obj, excluded_fields=[]):
     """JSONlines representation of object fields, for making diffs
     see https://jsonlines.org/
     """
@@ -530,10 +935,12 @@ def jsonlines(obj):
                 fieldname: _jsonfriendly_value(getattr(obj, fieldname))
             })
             for fieldname in [field.name for field in obj._meta.fields]
+            if not fieldname in excluded_fields
         ]
     return ''
 
 def make_diff(old, new):
+    EXCLUDED_FIELDS = ['timestamp']
     if not old:
         # no diff for revision 0
         # get object id
@@ -546,35 +953,14 @@ def make_diff(old, new):
     return '\n'.join([
         line
         for line in difflib.unified_diff(
-                jsonlines(old),
-                jsonlines(new),
+                jsonlines(old, EXCLUDED_FIELDS),
+                jsonlines(new, EXCLUDED_FIELDS),
                 fromfile=f'{old.timestamp}',
                 tofile=f'{new.timestamp}',
                 n=1
         )
     ]).replace('\n\n', '\n')
 
-
-def load_csv(csv_path, limit=None):
-    return csvfile.make_rowds(fileio.read_csv(csv_path, limit))
-    
-def save_rowd(rowd, class_, username):
-    """Load records from CSV
-    """
-    record = class_()
-    try:
-        idkey = 'far_record_id'
-        x = rowd[idkey]
-    except:
-        idkey = 'wra_record_id'
-    #print(n,rowd[idkey])
-    for key,val in rowd.items():
-        if val:
-            if isinstance(val, str):
-                val = val.replace('00:00:00', '')
-                val = val.strip()
-            setattr(record, key, val)
-    record.save(username=username, note='CSV import')
 
 def load_facilities(csv_path):
     unique = list(set([
@@ -598,9 +984,68 @@ def load_facilities(csv_path):
     ]
     return facilities
 
+def model_fields(class_, exclude_fields=[]):
+    """Return name, type, and verbose description for each field in the model.
+    """
+    fields = class_._meta.get_fields()
+    data = [
+        [x.name, x.get_internal_type(), x.verbose_name]
+        for x in fields
+        if (
+            not (x.many_to_one or x.many_to_many
+                 or x.one_to_one or x.one_to_many
+                 or x.related_model)
+        ) and (
+            not x.name in exclude_fields
+        )
+    ]
+    for x in fields:
+        if x.one_to_one:
+            data.append( [x.name, x.get_internal_type()] )
+    for x in fields:
+        if x.one_to_many:
+            data.append( [x.name, x.get_internal_type()] )
+    for x in fields:
+        if x.many_to_one:
+            data.append( [x.name, x.get_internal_type(), x.verbose_name] )
+    for x in fields:
+        if x.many_to_many:
+            data.append( [x.name, x.get_internal_type()] )
+    return data
+
+def format_model_fields(fields):
+    """Return output of model_fields() as a table formatted string
+    """
+    return tabulate(fields)
 
 MODEL_CLASSES = {
+    'facility': Facility,
     'person': Person,
+    'personfacility': PersonFacility,
     'farrecord': FarRecord,
     'wrarecord': WraRecord,
+    'farrecordperson': FarRecordPerson,
+    'wrarecordperson': WraRecordPerson,
 }
+
+def write_csv(csv_path, model_class, cols, limit=None, debug=False):
+    """Writes rowds of specified model class to CSV file
+    """
+    with open(csv_path, 'w', newline='') as f:
+        writer = fileio.csv_writer(f)
+        if debug: print(f'header {cols}')
+        writer.writerow(cols)
+        n = 0
+        if limit:
+            for o in model_class.objects.all()[:limit]:
+                row = list(o.dump_rowd(cols).values())
+                if debug: print(f'{n}/{limit} row {row}')
+                writer.writerow(row)
+                n += 1
+        else:
+            num = model_class.objects.count()
+            for o in model_class.objects.all():
+                row = list(o.dump_rowd(cols).values())
+                if debug: print(f'{n}/{num} {row[0]}')
+                writer.writerow(row)
+                n += 1
