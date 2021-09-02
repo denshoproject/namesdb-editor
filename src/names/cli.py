@@ -141,12 +141,13 @@ def load(debug, offset, limit, note, model, csv_path, username):
     num = len(rowds)
     processed = 0
     failed = []
+    prepped_data = sql_class.prep_data()
     for n,rowd in enumerate(tqdm(
             rowds, desc='Writing database', ascii=True, unit='record'
     )):
         if n >= offset:
             try:
-                o = sql_class.load_rowd(rowd)
+                o,prepped_data = sql_class.load_rowd(rowd, prepped_data)
                 o.save(username=username, note=note)
             except:
                 err = sys.exc_info()[0]

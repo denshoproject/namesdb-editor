@@ -73,7 +73,13 @@ class Facility(models.Model):
         verbose_name_plural = 'Facilities'
 
     @staticmethod
-    def load_rowd(rowd):
+    def prep_data():
+        """Prepare data for loading CSV full of Facilities
+        """
+        return {}
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
         """Given a rowd dict from a CSV, return a Facility object
         """
         def normalize_fieldname(rowd, data, fieldname, choices):
@@ -95,7 +101,7 @@ class Facility(models.Model):
             facility = Facility()
         for key,val in data.items():
             setattr(facility, key, val)
-        return facility
+        return facility,prepped_data
 
     def save(self, *args, **kwargs):
         """Save Facility, ignoring usernames and notes"""
@@ -159,7 +165,13 @@ class Person(models.Model):
         }
 
     @staticmethod
-    def load_rowd(rowd):
+    def prep_data():
+        """Prepare data for loading CSV full of Persons
+        """
+        return {}
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
         """Given a rowd dict from a CSV, return a Person object
         """
         try:
@@ -190,7 +202,7 @@ class Person(models.Model):
                 if isinstance(val, str):
                     val = val.replace('00:00:00', '').strip()
                 setattr(o, key, val)
-        return o
+        return o,prepped_data
 
     def save(self, *args, **kwargs):
         """Save Person, adding NOID if absent and Revision with request.user
@@ -378,7 +390,26 @@ class PersonFacility(models.Model):
         )
 
     @staticmethod
-    def load_rowd(rowd):
+    def combo_id(person_id, facility_id):
+        return f'{person_id}:{facility_id}'
+
+    @staticmethod
+    def prep_data():
+        """Prepare data for loading CSV full of PersonFacility data
+        """
+        return {
+            'facilities': {
+                f.facility_id:
+                f for f in Facility.objects.all()
+            },
+            'personfacilities': {
+                pf.combo_id(pf.person_id, pf.facility_id): pf
+                for pf in PersonFacility.objects.all()
+            },
+        }
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
         """Given a rowd dict from a CSV, return a PersonFacility object
         """
         def normalize_fieldname(rowd, data, fieldname, choices):
@@ -392,11 +423,13 @@ class PersonFacility(models.Model):
         normalize_fieldname(rowd, data, 'exit_date',   ['facility_exit_date', 'exit_date'])
         # update or new
         p = Person.objects.get(nr_id=data['person_id'])
-        f = Facility.objects.get(facility_id=data['facility_id'])
+        f = prepped_data['facilities'][data['facility_id']]
         try:
-            pf = PersonFacility.objects.get(person=p, facility=f)
-        except PersonFacility.DoesNotExist:
+            pfid = PersonFacility.combo_id(p.nr_id, f.facility_id)
+            pf = prepped_data['personfacilities'][pfid]
+        except KeyError:
             pf = PersonFacility(person=p, facility=f)
+            pfid = PersonFacility.combo_id(p.nr_id, f.facility_id)
         for key,val in data.items():
             if key in ['entry_date', 'exit_date']:
                 try:
@@ -404,7 +437,8 @@ class PersonFacility(models.Model):
                     setattr(pf, key, val)
                 except parser._parser.ParserError:
                     pass
-        return pf
+        prepped_data[pfid] = pf
+        return pf,prepped_data
 
     def save(self, *args, **kwargs):
         """Save PersonFacility"""
@@ -481,7 +515,13 @@ class FarRecord(models.Model):
         }
 
     @staticmethod
-    def load_rowd(rowd):
+    def prep_data():
+        """Prepare data for loading CSV full of FarRecords
+        """
+        return {}
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
         """Given a rowd dict from a CSV, return a FarRecord object
         """
         try:
@@ -495,7 +535,7 @@ class FarRecord(models.Model):
                 if isinstance(val, str):
                     val = val.replace('00:00:00', '').strip()
                 setattr(o, key, val)
-        return o
+        return o,prepped_data
 
     def save(self, *args, **kwargs):
         """Save FarRecord, adding Revision with request.user
@@ -589,8 +629,23 @@ class FarRecordPerson():
     """Fake class used for importing FarRecord->Person links"""
 
     @staticmethod
-    def load_rowd(rowd):
-        """Given a rowd dict from a CSV, return a FarRecord object
+    def prep_data():
+        """Prepare data for loading CSV full of PersonFacility data
+        """
+        return {
+            'farrecords': {
+                r.far_record_id: r
+                for r in FarRecord.objects.all()
+            },
+            'persons': {
+                p.nr_id: p
+                for p in Person.objects.all()
+            },
+        }
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
+        """Prepare data for loading CSV full of FarRecordPerson data
         """
         def normalize_fieldname(rowd, data, fieldname, choices):
             for field in choices:
@@ -600,10 +655,10 @@ class FarRecordPerson():
         normalize_fieldname(rowd, data, 'far_record_id',['far_record_id', 'fk_far_id', 'id'])
         normalize_fieldname(rowd, data, 'person_id',   ['nr_id', 'person_id'])
         # update or new
-        f = FarRecord.objects.get(far_record_id=data['far_record_id'])
-        p = Person.objects.get(nr_id=data['person_id'])
-        f.person = p
-        return f
+        r = prepped_data['farrecords'][data['far_record_id']]
+        p = prepped_data['persons'][data['person_id']]
+        r.person = p
+        return r,prepped_data
 
     def save(self, *args, **kwargs):
         """Save FarRecord"""
@@ -671,7 +726,13 @@ class WraRecord(models.Model):
         }
 
     @staticmethod
-    def load_rowd(rowd):
+    def prep_data():
+        """Prepare data for loading CSV full of FarRecords
+        """
+        return {}
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
         """Given a rowd dict from a CSV, return a WraRecord object
         """
         try:
@@ -685,7 +746,7 @@ class WraRecord(models.Model):
                 if isinstance(val, str):
                     val = val.replace('00:00:00', '').strip()
                 setattr(o, key, val)
-        return o
+        return o,prepped_data
 
     def save(self, *args, **kwargs):
         """Save WraRecord, adding Revision with request.user
@@ -780,7 +841,22 @@ class WraRecordPerson():
     """Fake class used for importing WraRecord->Person links"""
 
     @staticmethod
-    def load_rowd(rowd):
+    def prep_data():
+        """Prepare data for loading CSV full of WraRecordPerson data
+        """
+        return {
+            'wrarecords': {
+                r.wra_record_id: r
+                for r in WraRecord.objects.all()
+            },
+            'persons': {
+                p.nr_id: p
+                for p in Person.objects.all()
+            },
+        }
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
         """Given a rowd dict from a CSV, return a WraRecord object
         """
         def normalize_fieldname(rowd, data, fieldname, choices):
@@ -791,10 +867,10 @@ class WraRecordPerson():
         normalize_fieldname(rowd, data, 'wra_record_id',['wra_filenumber', 'fk_wra_id', 'id'])
         normalize_fieldname(rowd, data, 'person_id',   ['nr_id', 'person_id'])
         # update or new
-        w = WraRecord.objects.get(wra_filenumber=data['wra_record_id'])
-        p = Person.objects.get(nr_id=data['person_id'])
-        w.person = p
-        return w
+        r = prepped_data['wrarecords'][data['wra_record_id']]
+        p = prepped_data['persons'][data['person_id']]
+        r.person = p
+        return r,prepped_data
 
     def save(self, *args, **kwargs):
         """Save WraRecord"""
