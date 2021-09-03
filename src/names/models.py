@@ -908,9 +908,15 @@ class Revision(models.Model):
                     fields_considered.append(f'tmstmp - {field}')
                     continue
                 # has value of this field (or lack thereof) changed?
-                old_value = getattr(new_object, field.name)
-                new_value = getattr(old_object, field.name)
-                if not (old_value == new_value):
+                try:
+                    old_value = getattr(old_object, field.name)
+                except Person.DoesNotExist:  # Far/WraRecord.person is missing
+                    old_value = None
+                try:
+                    new_value = getattr(new_object, field.name)
+                except Person.DoesNotExist:  # Far/WraRecord.person is missing
+                    new_value = None
+                if new_value and (not (old_value == new_value)):
                     changed += 1
                     fields_diff.append((field.name, old_value, new_value))
                 else:
