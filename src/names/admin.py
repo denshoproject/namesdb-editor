@@ -292,9 +292,23 @@ class PersonAdmin(admin.ModelAdmin):
         'preexclusion_residence_state', 'postexclusion_residence_state',
     )
     search_fields = (
-        'family_name', 'given_name', 'given_name_alt', 'other_names',
-        'middle_name', 'prefix_name', 'suffix_name', 'jp_name',
-        'preferred_name',
+            'nr_id', 'timestamp',
+            'family_name', 'given_name',
+            'given_name_alt',
+            'other_names',
+            'middle_name',
+            'prefix_name', 'suffix_name',
+            'jp_name',
+            'preferred_name',
+            'birth_date', 'birth_date_text',
+            'birth_place',
+            'death_date', 'death_date_text',
+            'wra_family_no', 'wra_individual_no',
+            'citizenship', 'alien_registration_no',
+            'gender',
+            'preexclusion_residence_city', 'preexclusion_residence_state',
+            'postexclusion_residence_city', 'postexclusion_residence_state',
+            'exclusion_order_title', 'exclusion_order_id',
     )
     inlines = [
         PersonFacilityInline, FarRecordInline, WraRecordInline, RevisionInline,
