@@ -94,7 +94,8 @@ class FarRecordAdminForm(forms.ModelForm):
 @admin.register(FarRecord)
 class FarRecordAdmin(admin.ModelAdmin):
     list_display = (
-        'far_record_id', 'facility', 'last_name', 'first_name', 'year_of_birth',
+        'far_record_id', 'facility', 'family_number', 'last_name', 'first_name',
+        'year_of_birth',
     )
     list_display_links = ('far_record_id',)
     list_filter = ('facility', 'sex', 'citizenship')
@@ -162,7 +163,7 @@ class WraRecordAdminForm(forms.ModelForm):
 @admin.register(WraRecord)
 class WraRecordAdmin(admin.ModelAdmin):
     list_display = (
-        'wra_filenumber', 'facility',
+        'wra_filenumber', 'facility', 'familyno',
         'lastname', 'firstname', 'middleinitial', 'birthyear',
     )
     list_display_links = ('wra_filenumber',)
@@ -282,7 +283,8 @@ class PersonAdminForm(forms.ModelForm):
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
     list_display = (
-        'nr_id', 'family_name', 'given_name', 'preferred_name', 'gender', 'birth_date',
+        'nr_id', 'family_name', 'given_name', 'preferred_name', 'gender',
+        'birth_date', 'wra_family_no',
     )
     list_display_links = ('nr_id', 'family_name', 'given_name',)
     list_filter = (
