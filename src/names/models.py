@@ -278,7 +278,7 @@ class Person(models.Model):
                 names_personfacility.facility_id,
                 names_personfacility.entry_date, names_personfacility.exit_date
             FROM names_person INNER JOIN names_personfacility
-                ON names_person.id = names_personfacility.person_id;
+                ON names_person.nr_id = names_personfacility.person_id;
         """
         x = {}
         with connections['names'].cursor() as cursor:
@@ -303,7 +303,7 @@ class Person(models.Model):
                    names_farrecord.far_record_id,
                    names_farrecord.last_name, names_farrecord.first_name
             FROM names_farrecord INNER JOIN names_person
-            ON names_farrecord.person_id = names_person.id;
+            ON names_farrecord.person_id = names_person.nr_id;
         """
         x = {}
         with connections['names'].cursor() as cursor:
@@ -328,7 +328,7 @@ class Person(models.Model):
                    names_wrarecord.wra_record_id,
                    names_wrarecord.lastname, names_wrarecord.firstname
             FROM names_wrarecord INNER JOIN names_person
-            ON names_wrarecord.person_id = names_person.id;
+            ON names_wrarecord.person_id = names_person.nr_id;
         """
         x = {}
         with connections['names'].cursor() as cursor:
@@ -584,7 +584,7 @@ class FarRecord(models.Model):
             SELECT names_farrecord.far_record_id, names_person.nr_id,
                    names_person.preferred_name
             FROM names_farrecord
-            INNER JOIN names_person ON names_farrecord.person_id = names_person.id
+            INNER JOIN names_person ON names_farrecord.person_id = names_person.nr_id
         """
         with connections['names'].cursor() as cursor:
             cursor.execute(query)
@@ -797,7 +797,7 @@ class WraRecord(models.Model):
             SELECT names_wrarecord.wra_record_id, names_person.nr_id,
                    names_person.preferred_name
             FROM names_wrarecord
-            INNER JOIN names_person ON names_wrarecord.person_id = names_person.id
+            INNER JOIN names_person ON names_wrarecord.person_id = names_person.nr_id
         """
         with connections['names'].cursor() as cursor:
             cursor.execute(query)
