@@ -366,13 +366,13 @@ class Person(models.Model):
         return d
 
     def post(self, related, ds):
-        """Post record to Elasticsearch
+        """Post Person record to Elasticsearch
         """
         data = self.dict(related)
         es_class = ELASTICSEARCH_CLASSES_BY_MODEL['person']
-        d = es_class.from_dict(data['id'], data)
-        result = d.save(index=ds.index_name('person'), using=ds.es)
-        return result
+        return es_class.from_dict(data['nr_id'], data).save(
+            index=ds.index_name('person'), using=ds.es
+        )
 
 
 class PersonFacility(models.Model):
@@ -616,11 +616,11 @@ class FarRecord(models.Model):
         return d
 
     def post(self, related, ds):
-        """Post record to Elasticsearch
+        """Post FarRecord to Elasticsearch
         """
         data = self.dict(related)
         es_class = ELASTICSEARCH_CLASSES_BY_MODEL['farrecord']
-        return es_class.from_dict(data['id'], data).save(
+        return es_class.from_dict(data['far_record_id'], data).save(
             index=ds.index_name('farrecord'), using=ds.es
         )
 
@@ -828,11 +828,11 @@ class WraRecord(models.Model):
         return d
 
     def post(self, related, ds):
-        """Post record to Elasticsearch
+        """Post WraRecord to Elasticsearch
         """
         data = self.dict(related)
         es_class = ELASTICSEARCH_CLASSES_BY_MODEL['wrarecord']
-        return es_class.from_dict(data['id'], data).save(
+        return es_class.from_dict(data['wra_record_id'], data).save(
             index=ds.index_name('wrarecord'), using=ds.es
         )
 
