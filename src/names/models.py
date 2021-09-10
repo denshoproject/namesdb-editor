@@ -344,6 +344,27 @@ class Person(models.Model):
                     })
         return x
 
+    @staticmethod
+    def related_family():
+        """Build dict of Person wra_family_no->nr_id relations
+        """
+        query = """
+            SELECT names_person.wra_family_no, names_person.nr_id,
+                   names_person.preferred_name
+            FROM names_person;
+        """
+        x = {}
+        with connections['names'].cursor() as cursor:
+            cursor.execute(query)
+            for wra_family_no,nr_id,preferred_name in cursor.fetchall():
+                if not x.get(wra_family_no):
+                    x[wra_family_no] = []
+                x[wra_family_no].append({
+                    'nr_id': nr_id,
+                    'preferred_name': preferred_name,
+                })
+        return x
+
     def dict(self, related):
         """JSON-serializable dict
         """
@@ -363,6 +384,11 @@ class Person(models.Model):
                 if getattr(self, fieldname):
                     value = getattr(self, fieldname)
             d[fieldname] = value
+        d['family'] = []
+        if self.wra_family_no and related['family'].get(self.wra_family_no):
+            d['family'] = [
+                person for person in related['family'][self.wra_family_no]
+            ]
         return d
 
     def post(self, related, ds):
@@ -596,6 +622,29 @@ class FarRecord(models.Model):
                 if nr_id
             }
 
+    @staticmethod
+    def related_family():
+        """Build dict of FarRecord family_number->far_record_id relations
+        """
+        query = """
+            SELECT names_farrecord.family_number, names_farrecord.far_record_id,
+                   names_farrecord.last_name, names_farrecord.first_name
+            FROM names_farrecord;
+        """
+        x = {}
+        with connections['names'].cursor() as cursor:
+            cursor.execute(query)
+            for fields in cursor.fetchall():
+                family_number,far_record_id,last_name,first_name = fields
+                if not x.get(family_number):
+                    x[family_number] = []
+                x[family_number].append({
+                    'far_record_id': far_record_id,
+                    'last_name': last_name,
+                    'first_name': first_name,
+                })
+        return x
+
     def dict(self, related):
         """JSON-serializable dict
         @param related: dict of person_id: {'id':..., 'name':...}
@@ -613,6 +662,11 @@ class FarRecord(models.Model):
             else:
                 value = str(getattr(self, fieldname, ''))
             d[fieldname] = value
+        d['family'] = []
+        if self.family_number and related['family'].get(self.family_number):
+            d['family'] = [
+                person for person in related['family'][self.family_number]
+            ]
         return d
 
     def post(self, related, ds):
@@ -809,6 +863,29 @@ class WraRecord(models.Model):
                 if nr_id
             }
 
+    @staticmethod
+    def related_family():
+        """Build dict of WraRecord family_number->far_record_id relations
+        """
+        query = """
+            SELECT names_wrarecord.familyno, names_wrarecord.wra_record_id,
+                   names_wrarecord.lastname, names_wrarecord.firstname
+            FROM names_wrarecord;
+        """
+        x = {}
+        with connections['names'].cursor() as cursor:
+            cursor.execute(query)
+            for fields in cursor.fetchall():
+                familyno,wra_record_id,lastname,firstname = fields
+                if not x.get(familyno):
+                    x[familyno] = []
+                x[familyno].append({
+                    'wra_record_id': wra_record_id,
+                    'lastname': lastname,
+                    'firstname': firstname,
+                })
+        return x
+
     def dict(self, related):
         """JSON-serializable dict
         """
@@ -825,6 +902,11 @@ class WraRecord(models.Model):
             else:
                 value = str(getattr(self, fieldname, ''))
             d[fieldname] = value
+        d['family'] = []
+        if self.familyno and related['family'].get(self.familyno):
+            d['family'] = [
+                person for person in related['family'][self.familyno]
+            ]
         return d
 
     def post(self, related, ds):

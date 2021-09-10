@@ -247,10 +247,13 @@ def post(hosts, limit, debug, model):
         related['facilities'] = models.Person.related_facilities()
         related['far_records'] = models.Person.related_farrecords()
         related['wra_records'] = models.Person.related_wrarecords()
+        related['family'] = models.Person.related_family()
     elif model in ['farrecord', 'far']:
         related['persons'] = models.FarRecord.related_persons()
+        related['family'] = models.FarRecord.related_family()
     elif model in ['wrarecord', 'wra']:
         related['persons'] = models.WraRecord.related_persons()
+        related['family'] = models.WraRecord.related_family()
     
     click.echo('Loading from database')
     sql_class = models.MODEL_CLASSES[model]
