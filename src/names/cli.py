@@ -148,7 +148,8 @@ def load(debug, offset, limit, note, model, csv_path, username):
         if n >= offset:
             try:
                 o,prepped_data = sql_class.load_rowd(rowd, prepped_data)
-                o.save(username=username, note=note)
+                if o:
+                    o.save(username=username, note=note)
             except:
                 err = sys.exc_info()[0]
                 click.echo(f'FAIL {rowd} {err}')

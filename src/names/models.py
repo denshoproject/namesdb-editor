@@ -448,8 +448,11 @@ class PersonFacility(models.Model):
         normalize_fieldname(rowd, data, 'entry_date',  ['facility_entry_date', 'entry_date'])
         normalize_fieldname(rowd, data, 'exit_date',   ['facility_exit_date', 'exit_date'])
         # update or new
+        try:
+            f = prepped_data['facilities'][data['facility_id']]
+        except KeyError:  # some rows are missing facility_id
+            return None,prepped_data
         p = Person.objects.get(nr_id=data['person_id'])
-        f = prepped_data['facilities'][data['facility_id']]
         try:
             pfid = PersonFacility.combo_id(p.nr_id, f.facility_id)
             pf = prepped_data['personfacilities'][pfid]
