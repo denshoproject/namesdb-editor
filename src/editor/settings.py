@@ -56,7 +56,7 @@ DATABASES = {
 
 DATABASE_ROUTERS = ['names.models.NamesRouter']
 
-DOCSTORE_HOSTS = config.get('database', 'namesdb_host')
+DOCSTORE_HOST = config.get('database', 'namesdb_host')
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
