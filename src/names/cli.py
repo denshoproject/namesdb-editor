@@ -17,7 +17,9 @@ Sample usage:
     $ namesdb status -H localhost:9200
 
     # Publish records to Elasticsearch
-    $ namesdb post -H localhost:9200 /tmp/namesdb-data/far-manzanar.csv
+    $ namesdb post -H localhost:9200 person
+    $ namesdb post -H localhost:9200 farrecord
+    $ namesdb post -H localhost:9200 wrarecord
     
     # Print Elasticsearch URL for record
     $ namesdb url -H localhost:9200 person 0a1b2c3d4e
