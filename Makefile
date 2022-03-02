@@ -5,6 +5,18 @@ SHELL = /bin/bash
 SRC_REPO_EDITOR=https://github.com/denshoproject/namesdb-editor
 SRC_REPO_PUBLIC=https://github.com/denshoproject/namesdb-public.git
 
+# Release name e.g. jessie
+DEBIAN_CODENAME := $(shell lsb_release -sc)
+# Release numbers e.g. 8.10
+DEBIAN_RELEASE := $(shell lsb_release -sr)
+# Sortable major version tag e.g. deb8
+DEBIAN_RELEASE_TAG = deb$(shell lsb_release -sr | cut -c1)
+
+PYTHON_VERSION=python3.9
+ifeq ($(DEBIAN_CODENAME), buster)
+	PYTHON_VERSION=python3.7
+endif
+
 INSTALL_BASE=/opt
 INSTALLDIR=$(INSTALL_BASE)/namesdb-editor
 INSTALL_PUBLIC=$(INSTALLDIR)/namesdb-public
@@ -25,6 +37,11 @@ LOG_BASE=/var/log/ddr
 MEDIA_BASE=/var/www/namesdb-editor
 MEDIA_ROOT=$(MEDIA_BASE)/media
 STATIC_ROOT=$(MEDIA_BASE)/static
+
+LIBMARIADB_PKG=libmariadb-dev
+ifeq ($(DEBIAN_CODENAME), buster)
+	LIBMARIADB_PKG=libmariadbclient-dev
+endif
 
 
 .PHONY: help
@@ -147,7 +164,7 @@ get-namesdb-editor:
 install-namesdb-editor: install-virtualenv install-setuptools
 	@echo ""
 	@echo "namesdb-editor --------------------------------------------------------------"
-	apt-get --assume-yes install imagemagick libjpeg-dev libmariadbclient-dev libxml2 libxslt1.1 libxslt1-dev
+	apt-get --assume-yes install imagemagick libjpeg-dev $(LIBMARIADB_PKG) libxml2 libxslt1.1 libxslt1-dev
 	source $(VIRTUALENV)/bin/activate; \
 	pip install -U -r $(INSTALLDIR)/requirements.txt
 	source $(VIRTUALENV)/bin/activate; \
