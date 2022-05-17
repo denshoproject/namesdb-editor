@@ -43,6 +43,8 @@ ifeq ($(DEBIAN_CODENAME), buster)
 	LIBMARIADB_PKG=libmariadbclient-dev
 endif
 
+SUPERVISOR_GUNICORN_CONF=/etc/supervisor/conf.d/namesdbeditor.conf
+
 
 .PHONY: help
 
@@ -266,7 +268,7 @@ install-daemons-configs:
 	chmod 644 $(NGINX_APP_CONF)
 	-ln -s $(NGINX_APP_CONF) $(NGINX_APP_CONF_LINK)
 # supervisord
-	cp $(INSTALLDIR)/conf/gunicorn_namesdb.conf $(SUPERVISOR_GUNICORN_CONF)
+	cp $(INSTALLDIR)/conf/supervisor.conf $(SUPERVISOR_GUNICORN_CONF)
 	chown root.root $(SUPERVISOR_GUNICORN_CONF)
 	chmod 644 $(SUPERVISOR_GUNICORN_CONF)
 
