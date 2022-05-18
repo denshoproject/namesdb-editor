@@ -46,6 +46,7 @@ ifeq ($(DEBIAN_CODENAME), buster)
 	LIBMARIADB_PKG=libmariadbclient-dev
 endif
 
+RUNSERVER_PORT=8004
 SUPERVISOR_GUNICORN_CONF=/etc/supervisor/conf.d/namesdbeditor.conf
 NGINX_CONF=/etc/nginx/sites-available/namesdbeditor.conf
 NGINX_CONF_LINK=/etc/nginx/sites-enabled/namesdbeditor.conf
@@ -203,7 +204,7 @@ shell:
 
 runserver:
 	source $(VIRTUALENV)/bin/activate; \
-	python src/manage.py runserver 0.0.0.0:8000
+	python src/manage.py runserver 0.0.0.0:$(RUNSERVER_PORT)
 
 uninstall-namesdb-editor:
 	cd $(APPDIR)
