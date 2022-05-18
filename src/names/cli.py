@@ -238,6 +238,10 @@ def status(hosts):
 def post(hosts, limit, debug, model):
     """Post data from SQL database to Elasticsearch.
     """
+    MODELS = ['person', 'farrecord', 'far', 'wrarecord', 'wra']
+    if model not in MODELS:
+        click.echo(f'Sorry, model has to be one of {MODELS}')
+        sys.exit(1)
     model = model_w_abbreviations(model.lower().strip())
     hosts = hosts_index(hosts)
     ds = docstore.Docstore(hosts)
