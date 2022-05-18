@@ -77,6 +77,23 @@ def help():
     click.echo(HELP)
 
 @namesdb.command()
+def conf():
+    """Print configuration settings.
+    
+    More detail since you asked.
+    """
+    click.echo(f'namesdb will use the following settings:')
+    click.echo(f'CONFIG_FILES:            {settings.CONFIG_FILES}')
+    click.echo('')
+    click.echo(f"DATABASES[names]NAME     {settings.DATABASES['names']['NAME']}")
+    click.echo('')
+    click.echo(f'NAMESDB_HOST:            {settings.DOCSTORE_HOST}')
+    click.echo(f'DOCSTORE_SSL_CERTFILE:   {settings.DOCSTORE_SSL_CERTFILE}')
+    click.echo(f'DOCSTORE_USERNAME:       {settings.DOCSTORE_USERNAME}')
+    click.echo(f'DOCSTORE_PASSWORD:       {settings.DOCSTORE_PASSWORD}')
+    click.echo('')
+
+@namesdb.command()
 @click.argument('model')
 def schema(model):
     """Print schema for specified model
