@@ -24,6 +24,9 @@ APPDIR=$(INSTALLDIR)/src
 REQUIREMENTS=$(INSTALLDIR)/requirements.txt
 PIP_CACHE_DIR=$(INSTALL_BASE)/pip-cache
 
+CWD := $(shell pwd)
+INSTALL_STATIC=$(INSTALLDIR)/static
+
 VIRTUALENV=$(INSTALLDIR)/venv/names
 
 CONF_BASE=/etc/ddr
@@ -34,7 +37,7 @@ CONF_SECRET=$(CONF_BASE)/namesdbeditor-secret-key.txt
 SQLITE_BASE=$(INSTALLDIR)/db
 LOG_BASE=/var/log/ddr
 
-MEDIA_BASE=/var/www/namesdb-editor
+MEDIA_BASE=/var/www/namesdbeditor
 MEDIA_ROOT=$(MEDIA_BASE)/media
 STATIC_ROOT=$(MEDIA_BASE)/static
 
