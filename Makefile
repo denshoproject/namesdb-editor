@@ -47,6 +47,8 @@ ifeq ($(DEBIAN_CODENAME), buster)
 endif
 
 SUPERVISOR_GUNICORN_CONF=/etc/supervisor/conf.d/namesdbeditor.conf
+NGINX_CONF=/etc/nginx/sites-available/namesdbeditor.conf
+NGINX_CONF_LINK=/etc/nginx/sites-enabled/namesdbeditor.conf
 
 
 .PHONY: help
@@ -266,18 +268,18 @@ install-daemons-configs:
 	@echo ""
 	@echo "configuring daemons -------------------------------------------------"
 # nginx
-	cp $(INSTALLDIR)/conf/namesdb-editor.conf $(NGINX_APP_CONF)
-	chown root.root $(NGINX_APP_CONF)
-	chmod 644 $(NGINX_APP_CONF)
-	-ln -s $(NGINX_APP_CONF) $(NGINX_APP_CONF_LINK)
+	cp $(INSTALLDIR)/conf/nginx.conf $(NGINX_CONF)
+	chown root.root $(NGINX_CONF)
+	chmod 644 $(NGINX_CONF)
+	-ln -s $(NGINX_CONF) $(NGINX_CONF_LINK)
 # supervisord
 	cp $(INSTALLDIR)/conf/supervisor.conf $(SUPERVISOR_GUNICORN_CONF)
 	chown root.root $(SUPERVISOR_GUNICORN_CONF)
 	chmod 644 $(SUPERVISOR_GUNICORN_CONF)
 
 uninstall-daemons-configs:
-	-rm $(NGINX_APP_CONF_LINK) 
-	-rm $(NGINX_APP_CONF) 
+	-rm $(NGINX_CONF_LINK)
+	-rm $(NGINX_CONF)
 	-rm $(SUPERVISOR_GUNICORN_CONF)
 
 
