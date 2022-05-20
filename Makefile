@@ -19,7 +19,7 @@ endif
 
 INSTALL_BASE=/opt
 INSTALLDIR=$(INSTALL_BASE)/namesdb-editor
-INSTALL_PUBLIC=$(INSTALLDIR)/namesdb-public
+INSTALL_PUBLIC=$(INSTALL_BASE)/namesdb-public
 APPDIR=$(INSTALLDIR)/src
 REQUIREMENTS=$(INSTALLDIR)/requirements.txt
 PIP_CACHE_DIR=$(INSTALL_BASE)/pip-cache
@@ -231,7 +231,7 @@ get-namesdb-public:
 
 install-namesdb-public: install-virtualenv
 	-rm -Rf $(APPDIR)/namesdb_public
-	ln -s $(INSTALL_PUBLIC)/namesdb_public $(APPDIR)/namesdb_public
+	ln -s $(INSTALL_PUBLIC)/namessite/namesdb_public $(APPDIR)/namesdb_public
 
 uninstall-namesdb-public: install-virtualenv
 
