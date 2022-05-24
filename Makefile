@@ -232,6 +232,8 @@ get-namesdb-public:
 install-namesdb-public: install-virtualenv
 	-rm -Rf $(APPDIR)/namesdb_public
 	ln -s $(INSTALL_PUBLIC)/namessite/namesdb_public $(APPDIR)/namesdb_public
+	source $(VIRTUALENV)/bin/activate; \
+	pip install -U -r $(INSTALL_PUBLIC)/requirements.txt
 
 uninstall-namesdb-public: install-virtualenv
 
