@@ -226,7 +226,7 @@ get-namesdb-public:
 	git status | grep "On branch"
 	if test -d $(INSTALL_PUBLIC); \
 	then cd $(INSTALL_PUBLIC) && git pull; \
-	else cd $(INSTALLDIR) && git clone $(SRC_REPO_PUBLIC); \
+	else cd $(INSTALL_BASE) && git clone $(SRC_REPO_PUBLIC); \
 	fi
 
 install-namesdb-public: install-virtualenv
