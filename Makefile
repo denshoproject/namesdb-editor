@@ -67,7 +67,7 @@ help:
 	@echo ""
 
 
-install: install-prep install-app install-configs install-static
+install: install-prep get-app install-app install-configs install-static
 
 update: update-app
 
@@ -155,7 +155,7 @@ install-setuptools: install-virtualenv
 	pip install -U bpython setuptools
 
 
-get-app: get-names-editor get-names-public
+get-app: get-namesdb-editor get-namesdb-public
 
 install-app: install-namesdb-editor install-namesdb-public
 
