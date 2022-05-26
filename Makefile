@@ -5,12 +5,27 @@ SHELL = /bin/bash
 SRC_REPO_EDITOR=https://github.com/denshoproject/namesdb-editor
 SRC_REPO_PUBLIC=https://github.com/denshoproject/namesdb-public.git
 
+# Release name e.g. jessie
+DEBIAN_CODENAME := $(shell lsb_release -sc)
+# Release numbers e.g. 8.10
+DEBIAN_RELEASE := $(shell lsb_release -sr)
+# Sortable major version tag e.g. deb8
+DEBIAN_RELEASE_TAG = deb$(shell lsb_release -sr | cut -c1)
+
+PYTHON_VERSION=python3.9
+ifeq ($(DEBIAN_CODENAME), buster)
+	PYTHON_VERSION=python3.7
+endif
+
 INSTALL_BASE=/opt
 INSTALLDIR=$(INSTALL_BASE)/namesdb-editor
-INSTALL_PUBLIC=$(INSTALLDIR)/namesdb-public
+INSTALL_PUBLIC=$(INSTALL_BASE)/namesdb-public
 APPDIR=$(INSTALLDIR)/src
 REQUIREMENTS=$(INSTALLDIR)/requirements.txt
 PIP_CACHE_DIR=$(INSTALL_BASE)/pip-cache
+
+CWD := $(shell pwd)
+INSTALL_STATIC=$(INSTALLDIR)/static
 
 VIRTUALENV=$(INSTALLDIR)/venv/names
 
@@ -22,11 +37,19 @@ CONF_SECRET=$(CONF_BASE)/namesdbeditor-secret-key.txt
 SQLITE_BASE=$(INSTALLDIR)/db
 LOG_BASE=/var/log/ddr
 
-MEDIA_BASE=/var/www/namesdb-editor
+MEDIA_BASE=/var/www/namesdbeditor
 MEDIA_ROOT=$(MEDIA_BASE)/media
 STATIC_ROOT=$(MEDIA_BASE)/static
 
+LIBMARIADB_PKG=libmariadb-dev
+ifeq ($(DEBIAN_CODENAME), buster)
+	LIBMARIADB_PKG=libmariadbclient-dev
+endif
+
+RUNSERVER_PORT=8004
 SUPERVISOR_GUNICORN_CONF=/etc/supervisor/conf.d/namesdbeditor.conf
+NGINX_CONF=/etc/nginx/sites-available/namesdbeditor.conf
+NGINX_CONF_LINK=/etc/nginx/sites-enabled/namesdbeditor.conf
 
 
 .PHONY: help
@@ -44,7 +67,7 @@ help:
 	@echo ""
 
 
-install: install-prep install-app install-configs install-static
+install: install-prep get-app install-app install-configs install-static
 
 update: update-app
 
@@ -132,7 +155,7 @@ install-setuptools: install-virtualenv
 	pip install -U bpython setuptools
 
 
-get-app: get-names-editor get-names-public
+get-app: get-namesdb-editor get-namesdb-public
 
 install-app: install-namesdb-editor install-namesdb-public
 
@@ -148,8 +171,8 @@ get-namesdb-editor:
 
 install-namesdb-editor: install-virtualenv install-setuptools
 	@echo ""
-	@echo "namesdb-editor --------------------------------------------------------------"
-	apt-get --assume-yes install imagemagick libjpeg-dev libmariadbclient-dev libxml2 libxslt1.1 libxslt1-dev
+	@echo "install namesdb-editor -------------------------------------------------"
+	apt-get --assume-yes install imagemagick libjpeg-dev $(LIBMARIADB_PKG) libxml2 libxslt1.1 libxslt1-dev
 	source $(VIRTUALENV)/bin/activate; \
 	pip install -U -r $(INSTALLDIR)/requirements.txt
 	source $(VIRTUALENV)/bin/activate; \
@@ -181,7 +204,7 @@ shell:
 
 runserver:
 	source $(VIRTUALENV)/bin/activate; \
-	python src/manage.py runserver 0.0.0.0:8000
+	python src/manage.py runserver 0.0.0.0:$(RUNSERVER_PORT)
 
 uninstall-namesdb-editor:
 	cd $(APPDIR)
@@ -203,12 +226,16 @@ get-namesdb-public:
 	git status | grep "On branch"
 	if test -d $(INSTALL_PUBLIC); \
 	then cd $(INSTALL_PUBLIC) && git pull; \
-	else cd $(INSTALLDIR) && git clone $(SRC_REPO_PUBLIC); \
+	else cd $(INSTALL_BASE) && git clone $(SRC_REPO_PUBLIC); \
 	fi
 
 install-namesdb-public: install-virtualenv
+	@echo ""
+	@echo "install namesdb-editor -------------------------------------------------"
 	-rm -Rf $(APPDIR)/namesdb_public
-	ln -s $(INSTALL_PUBLIC)/namesdb_public $(APPDIR)/namesdb_public
+	ln -s $(INSTALL_PUBLIC)/namessite/namesdb_public $(APPDIR)/namesdb_public
+	source $(VIRTUALENV)/bin/activate; \
+	pip install -U -r $(INSTALL_PUBLIC)/requirements.txt
 
 uninstall-namesdb-public: install-virtualenv
 
@@ -245,14 +272,19 @@ uninstall-configs:
 install-daemons-configs:
 	@echo ""
 	@echo "configuring daemons -------------------------------------------------"
+# nginx
+	cp $(INSTALLDIR)/conf/nginx.conf $(NGINX_CONF)
+	chown root.root $(NGINX_CONF)
+	chmod 644 $(NGINX_CONF)
+	-ln -s $(NGINX_CONF) $(NGINX_CONF_LINK)
 # supervisord
 	cp $(INSTALLDIR)/conf/supervisor.conf $(SUPERVISOR_GUNICORN_CONF)
 	chown root.root $(SUPERVISOR_GUNICORN_CONF)
 	chmod 644 $(SUPERVISOR_GUNICORN_CONF)
 
 uninstall-daemons-configs:
-	-rm $(NGINX_APP_CONF_LINK) 
-	-rm $(NGINX_APP_CONF) 
+	-rm $(NGINX_CONF_LINK)
+	-rm $(NGINX_CONF)
 	-rm $(SUPERVISOR_GUNICORN_CONF)
 
 

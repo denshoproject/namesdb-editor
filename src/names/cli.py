@@ -17,7 +17,9 @@ Sample usage:
     $ namesdb status -H localhost:9200
 
     # Publish records to Elasticsearch
-    $ namesdb post -H localhost:9200 /tmp/namesdb-data/far-manzanar.csv
+    $ namesdb post -H localhost:9200 person
+    $ namesdb post -H localhost:9200 farrecord
+    $ namesdb post -H localhost:9200 wrarecord
     
     # Print Elasticsearch URL for record
     $ namesdb url -H localhost:9200 person 0a1b2c3d4e
@@ -73,6 +75,23 @@ def help():
     """Detailed help and usage examples
     """
     click.echo(HELP)
+
+@namesdb.command()
+def conf():
+    """Print configuration settings.
+    
+    More detail since you asked.
+    """
+    click.echo(f'namesdb will use the following settings:')
+    click.echo(f'CONFIG_FILES:            {settings.CONFIG_FILES}')
+    click.echo('')
+    click.echo(f"DATABASES[names]NAME     {settings.DATABASES['names']['NAME']}")
+    click.echo('')
+    click.echo(f'NAMESDB_HOST:            {settings.DOCSTORE_HOST}')
+    click.echo(f'DOCSTORE_SSL_CERTFILE:   {settings.DOCSTORE_SSL_CERTFILE}')
+    click.echo(f'DOCSTORE_USERNAME:       {settings.DOCSTORE_USERNAME}')
+    click.echo(f'DOCSTORE_PASSWORD:       {settings.DOCSTORE_PASSWORD}')
+    click.echo('')
 
 @namesdb.command()
 @click.argument('model')
@@ -148,7 +167,8 @@ def load(debug, offset, limit, note, model, csv_path, username):
         if n >= offset:
             try:
                 o,prepped_data = sql_class.load_rowd(rowd, prepped_data)
-                o.save(username=username, note=note)
+                if o:
+                    o.save(username=username, note=note)
             except:
                 err = sys.exc_info()[0]
                 click.echo(f'FAIL {rowd} {err}')
@@ -235,6 +255,10 @@ def status(hosts):
 def post(hosts, limit, debug, model):
     """Post data from SQL database to Elasticsearch.
     """
+    MODELS = ['person', 'farrecord', 'far', 'wrarecord', 'wra']
+    if model not in MODELS:
+        click.echo(f'Sorry, model has to be one of {MODELS}')
+        sys.exit(1)
     model = model_w_abbreviations(model.lower().strip())
     hosts = hosts_index(hosts)
     ds = docstore.Docstore(hosts)
@@ -247,10 +271,13 @@ def post(hosts, limit, debug, model):
         related['facilities'] = models.Person.related_facilities()
         related['far_records'] = models.Person.related_farrecords()
         related['wra_records'] = models.Person.related_wrarecords()
+        related['family'] = models.Person.related_family()
     elif model in ['farrecord', 'far']:
         related['persons'] = models.FarRecord.related_persons()
+        related['family'] = models.FarRecord.related_family()
     elif model in ['wrarecord', 'wra']:
         related['persons'] = models.WraRecord.related_persons()
+        related['family'] = models.WraRecord.related_family()
     
     click.echo('Loading from database')
     sql_class = models.MODEL_CLASSES[model]

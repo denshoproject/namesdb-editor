@@ -56,7 +56,12 @@ DATABASES = {
 
 DATABASE_ROUTERS = ['names.models.NamesRouter']
 
-DOCSTORE_HOSTS = config.get('database', 'namesdb_host')
+DOCSTORE_HOST = config.get('database', 'namesdb_host')
+DOCSTORE_SSL_CERTFILE = config.get('database', 'docstore_ssl_certfile')
+DOCSTORE_USERNAME = 'elastic'
+DOCSTORE_PASSWORD = config.get('database', 'docstore_password')
+
+RESULTS_PER_PAGE = 100
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
@@ -97,6 +102,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     #
+    'bootstrap_pagination',
+    'drf_yasg',
+    'rest_framework',
+    #
     'editor',
     'names',
     'namesdb_public',
@@ -105,7 +114,7 @@ INSTALLED_APPS = [
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
