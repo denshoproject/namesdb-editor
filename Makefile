@@ -171,7 +171,7 @@ get-namesdb-editor:
 
 install-namesdb-editor: install-virtualenv install-setuptools
 	@echo ""
-	@echo "namesdb-editor --------------------------------------------------------------"
+	@echo "install namesdb-editor -------------------------------------------------"
 	apt-get --assume-yes install imagemagick libjpeg-dev $(LIBMARIADB_PKG) libxml2 libxslt1.1 libxslt1-dev
 	source $(VIRTUALENV)/bin/activate; \
 	pip install -U -r $(INSTALLDIR)/requirements.txt
@@ -230,6 +230,8 @@ get-namesdb-public:
 	fi
 
 install-namesdb-public: install-virtualenv
+	@echo ""
+	@echo "install namesdb-editor -------------------------------------------------"
 	-rm -Rf $(APPDIR)/namesdb_public
 	ln -s $(INSTALL_PUBLIC)/namessite/namesdb_public $(APPDIR)/namesdb_public
 	source $(VIRTUALENV)/bin/activate; \
