@@ -21,6 +21,8 @@ from namesdb_public.models import FarRecord as ESFarRecord, FIELDS_FARRECORD
 from namesdb_public.models import WraRecord as ESWraRecord, FIELDS_WRARECORD
 from namesdb_public.models import FIELDS_BY_MODEL
 
+INDEX_PREFIX = 'names'
+
 ELASTICSEARCH_CLASSES = {
     'all': [
         {'doctype': 'person', 'class': ESPerson},
