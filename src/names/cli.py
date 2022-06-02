@@ -187,8 +187,9 @@ def load(debug, offset, limit, note, model, csv_path, username):
 def create(hosts):
     """Create specified Elasticsearch index and upload mappings.
     """
-    hosts = hosts_index(hosts)
-    docstore.Docstore(hosts).create_indices()
+    docstore.DocstoreManager(
+        models.INDEX_PREFIX, hosts_index(hosts), settings
+    ).create_indices()
 
 def hosts_index(hosts):
     if not hosts:
@@ -212,8 +213,9 @@ def destroy(hosts, confirm):
     is for individual documents.
     """
     if confirm:
-        hosts = hosts_index(hosts)
-        docstore.Docstore(hosts).delete_indices()
+        docstore.DocstoreManager(
+            models.INDEX_PREFIX, hosts_index(hosts), settings
+        ).delete_indices()
     else:
         click.echo("Add '--confirm' if you're sure you want to do this.")
 
@@ -224,7 +226,7 @@ def status(hosts):
     
     More detail since you asked.
     """
-    ds = docstore.Docstore(hosts)
+    ds = docstore.Docstore(models.INDEX_PREFIX, hosts_index(hosts), settings)
     s = ds.status()
     
     print('------------------------------------------------------------------------',0)
@@ -260,8 +262,9 @@ def post(hosts, limit, debug, model):
         click.echo(f'Sorry, model has to be one of {MODELS}')
         sys.exit(1)
     model = model_w_abbreviations(model.lower().strip())
-    hosts = hosts_index(hosts)
-    ds = docstore.Docstore(hosts)
+    ds = docstore.DocstoreManager(
+        models.INDEX_PREFIX, hosts_index(hosts), settings
+    )
     if limit:
         limit = int(limit)
     
@@ -319,8 +322,7 @@ def get(hosts, json, model, record_id):
         else:
             click.echo(f'{r.status_code} {r.reason}')
     else:
-        hosts = hosts_index(hosts)
-        ds = docstore.Docstore(hosts)
+        ds = docstore.Docstore(models.INDEX_PREFIX, hosts_index(hosts), settings)
         es_class = models_public.ELASTICSEARCH_CLASSES_BY_MODEL[model]
         record = es_class.get(id=record_id, using=ds.es)
         click.echo(record)
@@ -333,8 +335,9 @@ def delete(hosts, model, record_id):
     """Delete records in CSV file from Elasticsearch.
     """
     model = model_w_abbreviations(model)
-    hosts = hosts_index(hosts)
-    ds = docstore.Docstore(hosts)
+    ds = docstore.DocstoreManager(
+        models.INDEX_PREFIX, hosts_index(hosts), settings
+    )
     es_class = models_public.ELASTICSEARCH_CLASSES_BY_MODEL[model]
     try:
         record = es_class.get(id=record_id, using=ds.es)

@@ -1,7 +1,6 @@
 import logging
 import sys
 
-from . import docstore
 from . import models
 from namesdb_public import models as pubmodels
 
