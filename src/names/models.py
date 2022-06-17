@@ -187,14 +187,16 @@ class Person(models.Model):
             names = names.replace("'",'').replace('"','').split(',')
             if names:
                 o.other_names = '\n'.join(names)
-        try:
-            o.birth_date = parser.parse(rowd.pop('birth_date'))
-        except parser._parser.ParserError:
-            pass
-        try:
-            o.death_date = parser.parse(rowd.pop('death_date'))
-        except parser._parser.ParserError:
-            pass
+        if rowd.get('birth_date'):
+            try:
+                o.birth_date = parser.parse(rowd.pop('birth_date'))
+            except parser._parser.ParserError:
+                pass
+        if rowd.get('death_date'):
+            try:
+                o.death_date = parser.parse(rowd.pop('death_date'))
+            except parser._parser.ParserError:
+                pass
         if rowd.get('facility'):
             f = PersonFacility
             o.facility = None
