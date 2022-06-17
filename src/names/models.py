@@ -202,10 +202,10 @@ class Person(models.Model):
             o.facility = None
         # everything else
         for key,val in rowd.items():
-            if val:
-                if isinstance(val, str):
-                    val = val.replace('00:00:00', '').strip()
-                setattr(o, key, val)
+            val = val.strip()
+            if isinstance(val, str):
+                val = val.replace('00:00:00', '').strip()
+            setattr(o, key, val)
         return o,prepped_data
 
     def save(self, *args, **kwargs):
