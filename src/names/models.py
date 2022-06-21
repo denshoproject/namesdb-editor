@@ -176,10 +176,15 @@ class Person(models.Model):
     def load_rowd(rowd, prepped_data):
         """Given a rowd dict from a CSV, return a Person object
         """
-        try:
-            o = Person.objects.get(nr_id=rowd['nr_id'])
-        except Person.DoesNotExist:
+        if rowd.get('nr_id'):
+            try:
+                o = Person.objects.get(nr_id=rowd['nr_id'])
+            except Person.DoesNotExist:
+                o = Person()
+        else:
             o = Person()
+        if not o.nr_id:
+            o.nr_id = o._get_noid()
         # special cases
         if rowd.get('other_names'):
             names = rowd.pop('other_names')
@@ -187,23 +192,25 @@ class Person(models.Model):
             names = names.replace("'",'').replace('"','').split(',')
             if names:
                 o.other_names = '\n'.join(names)
-        try:
-            o.birth_date = parser.parse(rowd.pop('birth_date'))
-        except parser._parser.ParserError:
-            pass
-        try:
-            o.death_date = parser.parse(rowd.pop('death_date'))
-        except parser._parser.ParserError:
-            pass
+        if rowd.get('birth_date'):
+            try:
+                o.birth_date = parser.parse(rowd.pop('birth_date'))
+            except parser._parser.ParserError:
+                pass
+        if rowd.get('death_date'):
+            try:
+                o.death_date = parser.parse(rowd.pop('death_date'))
+            except parser._parser.ParserError:
+                pass
         if rowd.get('facility'):
             f = PersonFacility
             o.facility = None
         # everything else
         for key,val in rowd.items():
-            if val:
-                if isinstance(val, str):
-                    val = val.replace('00:00:00', '').strip()
-                setattr(o, key, val)
+            val = val.strip()
+            if isinstance(val, str):
+                val = val.replace('00:00:00', '').strip()
+            setattr(o, key, val)
         return o,prepped_data
 
     def save(self, *args, **kwargs):
