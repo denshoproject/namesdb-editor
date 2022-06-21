@@ -176,10 +176,15 @@ class Person(models.Model):
     def load_rowd(rowd, prepped_data):
         """Given a rowd dict from a CSV, return a Person object
         """
-        try:
-            o = Person.objects.get(nr_id=rowd['nr_id'])
-        except Person.DoesNotExist:
+        if rowd.get('nr_id'):
+            try:
+                o = Person.objects.get(nr_id=rowd['nr_id'])
+            except Person.DoesNotExist:
+                o = Person()
+        else:
             o = Person()
+        if not o.nr_id:
+            o.nr_id = o._get_noid()
         # special cases
         if rowd.get('other_names'):
             names = rowd.pop('other_names')
