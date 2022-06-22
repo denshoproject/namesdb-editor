@@ -37,6 +37,7 @@ Note: You can set environment variables for HOSTS and INDEX.:
 """
 
 from datetime import datetime
+from pathlib import Path
 import os
 import shutil
 import sqlite3
@@ -106,13 +107,44 @@ def schema(model):
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
-@click.option('--cols','-c', default=None, help='Export only specified fields.')
+@click.option('--search','-s', default=None, help='Search terms: "field=TERM;field=TERM;..."')
+@click.option('--searchfile','-S', default=None, help='Search terms from file.')
+@click.option('--cols','-c', default=None, help='Fields to export: "family_name,given_name,..."')
+@click.option('--colsfile','-C', default=None, help='Fields to export, from file.')
 @click.option('--limit','-l', default=None, help='Limit number of records.')
 @click.argument('model')
-@click.argument('csv_path')
-def dump(debug, cols, limit, model, csv_path):
-    """Dump data to a CSV file
+def dump(debug, search, searchfile, cols, colsfile, limit, model):
+    """Dump model data to STDOUT
+    
+    \b
+    You can search using Django field lookups:
+    https://docs.djangoproject.com/en/4.0/ref/models/querysets/#field-lookups
+    Use -s/--search to search a small number of fields from the command-line
+    or -S/--searchfile to get search terms from a file.
+    Search (one line):
+        last_name=Morita; first_name=Noriyuki; birth_date__icontains=1932
+    Search (multiple lines):
+        last_name=Morita
+        first_name=Noriyuki
+        birth_date__icontains=1932
+    Search (mixed):
+        last_name=Morita; first_name=Noriyuki
+        birth_date__icontains=1932
+    
+    \b
+    Use -c/--cols to specify output columns from the command-line
+    or -C/--colsfile to get from file.
+    Columns (one line):
+        last_name,first_name,birth_date
+    Columns (multiple lines):
+        last_name
+        first_name
+        birth_date
+    Columns (mixed):
+        last_name,first_name
+        birth_date
     """
+    # model
     model_class = models.MODEL_CLASSES[model]
     if debug: print(f'model_class {model_class}')
     EXCLUDED_FIELDS = [
@@ -124,17 +156,60 @@ def dump(debug, cols, limit, model, csv_path):
         if not f[0] in EXCLUDED_FIELDS
     ]
     id_fieldname = model_fieldnames[0]
-    if cols:
-        cols = [f for f in cols.strip().split(',') if f in model_fieldnames]
-        if id_fieldname not in cols:
-            cols.insert(0, id_fieldname)
+    # search
+    if searchfile:
+        with Path(searchfile).open('r') as f:
+            search = _parse_search(f.read().strip(), debug)
+    elif search:
+        search = _parse_search(search, debug)
+    # columns
+    if colsfile:
+        with Path(colsfile).open('r') as f:
+            columns = _parse_columns(f.read().strip(), debug)
+    elif cols:
+        columns = _parse_columns(cols)
     else:
-        cols = model_fieldnames
-    if debug: print(f'cols {cols}')
+        columns = model_fieldnames
+    if id_fieldname not in columns:
+        columns.insert(0, id_fieldname)
+    if debug: print(f'columns {columns}')
+    # limit
     if limit:
         limit = int(limit)
     if debug: print(f'limit {limit}')
-    models.write_csv(csv_path, model_class, cols, limit, debug)
+    # dump!
+    models.dump_csv(sys.stdout, model_class, search, columns, limit, debug)
+
+def _parse_search(text, debug=False):
+    if debug:
+        click.echo(f'search "{text}"')
+    queries = []
+    for line in text.splitlines():
+        for term in line.split(';'):
+            queries.append(term)
+    params = {}
+    for terms in queries:
+        if terms.strip():
+            try:
+                key,val = terms.strip().split('=')
+                params[key.strip()] = val.strip()
+            except ValueError as err:
+                click.echo(f'Malformed search (see help): "{search}"')
+                sys.exit(1)
+    if debug:
+        click.echo(f'search "{params}"')
+    return params
+
+def _parse_columns(text, debug=False):
+    if debug:
+        click.echo(f'cols "{text}"')
+    columns = []
+    for line in text.strip().splitlines():
+        for term in line.strip().split(','):
+            columns.append(term.strip())
+    if debug:
+        click.echo(f'columns "{columns}"')
+    return columns
 
 NOTE_DEFAULT = 'Load from CSV'
 
