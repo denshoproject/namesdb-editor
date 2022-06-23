@@ -1128,15 +1128,17 @@ MODEL_CLASSES = {
     'wrarecordperson': WraRecordPerson,
 }
 
-def dump_csv(output, model_class, search, cols, limit=None, debug=False):
+def dump_csv(output, model_class, ids, search, cols, limit=None, debug=False):
     """Writes rowds of specified model class to STDOUT
     """
     writer = fileio.csv_writer(output)
     if debug: print(f'header {cols}')
     writer.writerow(cols)
-
-    # TODO SEARCH IS HORRIBLY UNSAFE!!!
-    if search:
+    
+    if ids:
+        query = model_class.objects.filter(pk__in=ids)
+    elif search:
+        # TODO SEARCH IS HORRIBLY UNSAFE!!!
         query = model_class.objects.filter(**search)
     else:
         query = model_class.objects.all()

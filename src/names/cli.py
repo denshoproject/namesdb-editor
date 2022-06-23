@@ -107,13 +107,14 @@ def schema(model):
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
+@click.option('--idfile','-i', default=None, help='Load primary keys from file (one per line)')
 @click.option('--search','-s', default=None, help='Search terms: "field=TERM;field=TERM;..."')
 @click.option('--searchfile','-S', default=None, help='Search terms from file.')
 @click.option('--cols','-c', default=None, help='Fields to export: "family_name,given_name,..."')
 @click.option('--colsfile','-C', default=None, help='Fields to export, from file.')
 @click.option('--limit','-l', default=None, help='Limit number of records.')
 @click.argument('model')
-def dump(debug, search, searchfile, cols, colsfile, limit, model):
+def dump(debug, idfile, search, searchfile, cols, colsfile, limit, model):
     """Dump model data to STDOUT
     
     \b
@@ -156,6 +157,12 @@ def dump(debug, search, searchfile, cols, colsfile, limit, model):
         if not f[0] in EXCLUDED_FIELDS
     ]
     id_fieldname = model_fieldnames[0]
+    # identifiers from file
+    if idfile:
+        with Path(idfile).open('r') as f:
+            ids = [l.strip() for l in f.readlines()]
+    else:
+        ids = []
     # search
     if searchfile:
         with Path(searchfile).open('r') as f:
@@ -178,7 +185,7 @@ def dump(debug, search, searchfile, cols, colsfile, limit, model):
         limit = int(limit)
     if debug: print(f'limit {limit}')
     # dump!
-    models.dump_csv(sys.stdout, model_class, search, columns, limit, debug)
+    models.dump_csv(sys.stdout, model_class, ids, search, columns, limit, debug)
 
 def _parse_search(text, debug=False):
     if debug:
