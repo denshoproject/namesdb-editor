@@ -236,10 +236,14 @@ def load(debug, offset, limit, note, model, csv_path, username):
     if model not in available_models:
         click.echo(f'{model} is not one of {available_models}')
         sys.exit(1)
-    if offset: offset = int(offset)
-    if limit: limit = int(limit)
+    if offset:
+        offset = int(offset)
+    if limit:
+        limit = int(limit)
     sql_class = models.MODEL_CLASSES[model]
-    rowds = csvfile.make_rowds(fileio.read_csv(csv_path))
+    rowds = csvfile.make_rowds(
+        fileio.read_csv(csv_path, offset, limit)
+    )
     num = len(rowds)
     processed = 0
     failed = []
@@ -247,17 +251,16 @@ def load(debug, offset, limit, note, model, csv_path, username):
     for n,rowd in enumerate(tqdm(
             rowds, desc='Writing database', ascii=True, unit='record'
     )):
-        if n >= offset:
-            try:
-                o,prepped_data = sql_class.load_rowd(rowd, prepped_data)
-                if o:
-                    o.save(username=username, note=note)
-            except:
-                err = sys.exc_info()[0]
-                click.echo(f'FAIL {rowd} {err}')
-                failed.append( (n,rowd, err) )
-                raise
-            processed = processed + 1
+        try:
+            o,prepped_data = sql_class.load_rowd(rowd, prepped_data)
+            if o:
+                o.save(username=username, note=note)
+        except:
+            err = sys.exc_info()[0]
+            click.echo(f'FAIL {rowd} {err}')
+            failed.append( (n,rowd, err) )
+            raise
+        processed = processed + 1
         if processed > limit:
             break
     if failed:
