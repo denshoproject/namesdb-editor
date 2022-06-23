@@ -1,9 +1,8 @@
-from collections import OrderedDict
 import logging
 from typing import Any, Dict, List, Match, Optional, Set, Tuple, Union
 
 
-def make_row_dict(headers: List[str], row: List[str]) -> OrderedDict:
+def make_row_dict(headers: List[str], row: List[str]) -> Dict:
     """Turns CSV row into a dict with the headers as keys
     
     >>> headers0 = ['id', 'created', 'lastmod', 'title', 'description']
@@ -14,7 +13,7 @@ def make_row_dict(headers: List[str], row: List[str]) -> OrderedDict:
     @param row: A single row (list of fields, not dict)
     @returns: OrderedDict
     """
-    d = OrderedDict()
+    d = {}
     for n in range(0, len(row)):
         d[headers[n]] = _strip_str(row[n])
     return d
