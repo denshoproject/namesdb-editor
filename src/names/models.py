@@ -266,7 +266,7 @@ class Person(models.Model):
         """Get a fresh NOID from ddr-idservice noidminter API
         """
         try:
-            return noidminter.get_noid()
+            return noidminter.get_noids()[0]
         except ConnectionError:
             raise Exception(
                 f'Could not connect to ddr-idservice at {settings.NOIDMINTER_URL}.' \
