@@ -266,7 +266,7 @@ class Person(models.Model):
         """Get a fresh NOID from ddr-idservice noidminter API
         """
         try:
-            return noidminter.get_noid()
+            return noidminter.get_noids()[0]
         except ConnectionError:
             raise Exception(
                 f'Could not connect to ddr-idservice at {settings.NOIDMINTER_URL}.' \
@@ -1128,24 +1128,32 @@ MODEL_CLASSES = {
     'wrarecordperson': WraRecordPerson,
 }
 
-def write_csv(csv_path, model_class, cols, limit=None, debug=False):
-    """Writes rowds of specified model class to CSV file
+def dump_csv(output, model_class, ids, search, cols, limit=None, debug=False):
+    """Writes rowds of specified model class to STDOUT
     """
-    with open(csv_path, 'w', newline='') as f:
-        writer = fileio.csv_writer(f)
-        if debug: print(f'header {cols}')
-        writer.writerow(cols)
-        n = 0
-        if limit:
-            for o in model_class.objects.all()[:limit]:
-                row = list(o.dump_rowd(cols).values())
-                if debug: print(f'{n}/{limit} row {row}')
-                writer.writerow(row)
-                n += 1
-        else:
-            num = model_class.objects.count()
-            for o in model_class.objects.all():
-                row = list(o.dump_rowd(cols).values())
-                if debug: print(f'{n}/{num} {row[0]}')
-                writer.writerow(row)
-                n += 1
+    writer = fileio.csv_writer(output)
+    if debug: print(f'header {cols}')
+    writer.writerow(cols)
+    
+    if ids:
+        query = model_class.objects.filter(pk__in=ids)
+    elif search:
+        # TODO SEARCH IS HORRIBLY UNSAFE!!!
+        query = model_class.objects.filter(**search)
+    else:
+        query = model_class.objects.all()
+    
+    n = 0
+    if limit:
+        for o in query[:limit]:
+            row = list(o.dump_rowd(cols).values())
+            if debug: print(f'{n}/{limit} row {row}')
+            writer.writerow(row)
+            n += 1
+    else:
+        num = len(query)
+        for o in query:
+            row = list(o.dump_rowd(cols).values())
+            if debug: print(f'{n}/{num} {row[0]}')
+            writer.writerow(row)
+            n += 1

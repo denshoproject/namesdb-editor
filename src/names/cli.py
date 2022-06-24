@@ -37,6 +37,7 @@ Note: You can set environment variables for HOSTS and INDEX.:
 """
 
 from datetime import datetime
+from pathlib import Path
 import os
 import shutil
 import sqlite3
@@ -55,6 +56,7 @@ from . import csvfile
 from . import docstore
 from . import fileio
 from . import models
+from . import noidminter
 from . import publish
 from namesdb_public import models as models_public
 
@@ -106,13 +108,45 @@ def schema(model):
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
-@click.option('--cols','-c', default=None, help='Export only specified fields.')
+@click.option('--idfile','-i', default=None, help='Load primary keys from file (one per line)')
+@click.option('--search','-s', default=None, help='Search terms: "field=TERM;field=TERM;..."')
+@click.option('--searchfile','-S', default=None, help='Search terms from file.')
+@click.option('--cols','-c', default=None, help='Fields to export: "family_name,given_name,..."')
+@click.option('--colsfile','-C', default=None, help='Fields to export, from file.')
 @click.option('--limit','-l', default=None, help='Limit number of records.')
 @click.argument('model')
-@click.argument('csv_path')
-def dump(debug, cols, limit, model, csv_path):
-    """Dump data to a CSV file
+def dump(debug, idfile, search, searchfile, cols, colsfile, limit, model):
+    """Dump model data to STDOUT
+    
+    \b
+    You can search using Django field lookups:
+    https://docs.djangoproject.com/en/4.0/ref/models/querysets/#field-lookups
+    Use -s/--search to search a small number of fields from the command-line
+    or -S/--searchfile to get search terms from a file.
+    Search (one line):
+        last_name=Morita; first_name=Noriyuki; birth_date__icontains=1932
+    Search (multiple lines):
+        last_name=Morita
+        first_name=Noriyuki
+        birth_date__icontains=1932
+    Search (mixed):
+        last_name=Morita; first_name=Noriyuki
+        birth_date__icontains=1932
+    
+    \b
+    Use -c/--cols to specify output columns from the command-line
+    or -C/--colsfile to get from file.
+    Columns (one line):
+        last_name,first_name,birth_date
+    Columns (multiple lines):
+        last_name
+        first_name
+        birth_date
+    Columns (mixed):
+        last_name,first_name
+        birth_date
     """
+    # model
     model_class = models.MODEL_CLASSES[model]
     if debug: print(f'model_class {model_class}')
     EXCLUDED_FIELDS = [
@@ -124,22 +158,73 @@ def dump(debug, cols, limit, model, csv_path):
         if not f[0] in EXCLUDED_FIELDS
     ]
     id_fieldname = model_fieldnames[0]
-    if cols:
-        cols = [f for f in cols.strip().split(',') if f in model_fieldnames]
-        if id_fieldname not in cols:
-            cols.insert(0, id_fieldname)
+    # identifiers from file
+    if idfile:
+        with Path(idfile).open('r') as f:
+            ids = [l.strip() for l in f.readlines()]
     else:
-        cols = model_fieldnames
-    if debug: print(f'cols {cols}')
+        ids = []
+    # search
+    if searchfile:
+        with Path(searchfile).open('r') as f:
+            search = _parse_search(f.read().strip(), debug)
+    elif search:
+        search = _parse_search(search, debug)
+    # columns
+    if colsfile:
+        with Path(colsfile).open('r') as f:
+            columns = _parse_columns(f.read().strip(), debug)
+    elif cols:
+        columns = _parse_columns(cols)
+    else:
+        columns = model_fieldnames
+    if id_fieldname not in columns:
+        columns.insert(0, id_fieldname)
+    if debug: print(f'columns {columns}')
+    # limit
     if limit:
         limit = int(limit)
     if debug: print(f'limit {limit}')
-    models.write_csv(csv_path, model_class, cols, limit, debug)
+    # dump!
+    models.dump_csv(sys.stdout, model_class, ids, search, columns, limit, debug)
+
+def _parse_search(text, debug=False):
+    if debug:
+        click.echo(f'search "{text}"')
+    queries = []
+    for line in text.splitlines():
+        for term in line.split(';'):
+            queries.append(term)
+    params = {}
+    for terms in queries:
+        if terms.strip():
+            try:
+                key,val = terms.strip().split('=')
+                params[key.strip()] = val.strip()
+            except ValueError as err:
+                click.echo(f'Malformed search (see help): "{search}"')
+                sys.exit(1)
+    if debug:
+        click.echo(f'search "{params}"')
+    return params
+
+def _parse_columns(text, debug=False):
+    if debug:
+        click.echo(f'cols "{text}"')
+    columns = []
+    for line in text.strip().splitlines():
+        for term in line.strip().split(','):
+            columns.append(term.strip())
+    if debug:
+        click.echo(f'columns "{columns}"')
+    return columns
 
 NOTE_DEFAULT = 'Load from CSV'
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
+@click.option('--batchsize','-b', default=settings.NOIDMINTER_BATCH_SIZE,
+              help='Batch size for requesting new Person.nr_ids.')
 @click.option('--offset','-o', default=0, help='Start at specified record.')
 @click.option('--limit','-l', default=1_000_000, help='Limit number of records.')
 @click.option('--note','-n', default=NOTE_DEFAULT,
@@ -147,35 +232,55 @@ NOTE_DEFAULT = 'Load from CSV'
 @click.argument('model')
 @click.argument('csv_path')
 @click.argument('username')
-def load(debug, offset, limit, note, model, csv_path, username):
+def load(debug, batchsize, offset, limit, note, model, csv_path, username):
     """Load data from a CSV file
     """
     available_models = list(models.MODEL_CLASSES.keys())
     if model not in available_models:
         click.echo(f'{model} is not one of {available_models}')
         sys.exit(1)
-    if offset: offset = int(offset)
-    if limit: limit = int(limit)
+    if offset:
+        offset = int(offset)
+    if limit:
+        limit = int(limit)
     sql_class = models.MODEL_CLASSES[model]
-    rowds = csvfile.make_rowds(fileio.read_csv(csv_path))
+    prepped_data = sql_class.prep_data()
+    rowds = csvfile.make_rowds(
+        fileio.read_csv(csv_path, offset, limit)
+    )
     num = len(rowds)
     processed = 0
     failed = []
-    prepped_data = sql_class.prep_data()
+    noids_total = None
+    if sql_class.__name__ == 'Person':  # How many NOIDs are needed
+        noids_total = len(list(filter(lambda rowd: not rowd['nr_id'], rowds)))
+    noids = []
+    noids_assigned = 0
     for n,rowd in enumerate(tqdm(
             rowds, desc='Writing database', ascii=True, unit='record'
     )):
-        if n >= offset:
-            try:
-                o,prepped_data = sql_class.load_rowd(rowd, prepped_data)
-                if o:
-                    o.save(username=username, note=note)
-            except:
-                err = sys.exc_info()[0]
-                click.echo(f'FAIL {rowd} {err}')
-                failed.append( (n,rowd, err) )
-                raise
-            processed = processed + 1
+        if (sql_class.__name__ == 'Person') and not rowd['nr_id']:
+            # Person.nr_id is blank
+            if not noids:
+                # get from ddridservice in batches
+                noids_to_get = noids_total - noids_assigned
+                if noids_to_get > batchsize:
+                    this_batch = batchsize
+                else:
+                    this_batch = noids_to_get
+                noids = noidminter.get_noids(this_batch)
+            rowd['nr_id'] = noids.pop(0)
+            noids_assigned += 1
+        try:
+            o,prepped_data = sql_class.load_rowd(rowd, prepped_data)
+            if o:
+                o.save(username=username, note=note)
+        except:
+            err = sys.exc_info()[0]
+            click.echo(f'FAIL {rowd} {err}')
+            failed.append( (n,rowd, err) )
+            raise
+        processed = processed + 1
         if processed > limit:
             break
     if failed:
