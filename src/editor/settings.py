@@ -75,6 +75,7 @@ NOIDMINTER_USERNAME = config.get('noidminter', 'idservice_username')
 NOIDMINTER_PASSWORD = config.get('noidminter', 'idservice_password')
 if not (NOIDMINTER_USERNAME and NOIDMINTER_PASSWORD):
     raise Exception('Set ddr-idservice username and/or password in settings.')
+NOIDMINTER_BATCH_SIZE = config.get('noidminter', 'batch_size')
 
 # ----------------------------------------------------------------------
 

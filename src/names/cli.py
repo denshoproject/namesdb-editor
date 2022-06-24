@@ -56,6 +56,7 @@ from . import csvfile
 from . import docstore
 from . import fileio
 from . import models
+from . import noidminter
 from . import publish
 from namesdb_public import models as models_public
 
@@ -222,6 +223,8 @@ NOTE_DEFAULT = 'Load from CSV'
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
+@click.option('--batchsize','-b', default=settings.NOIDMINTER_BATCH_SIZE,
+              help='Batch size for requesting new Person.nr_ids.')
 @click.option('--offset','-o', default=0, help='Start at specified record.')
 @click.option('--limit','-l', default=1_000_000, help='Limit number of records.')
 @click.option('--note','-n', default=NOTE_DEFAULT,
@@ -229,7 +232,7 @@ NOTE_DEFAULT = 'Load from CSV'
 @click.argument('model')
 @click.argument('csv_path')
 @click.argument('username')
-def load(debug, offset, limit, note, model, csv_path, username):
+def load(debug, batchsize, offset, limit, note, model, csv_path, username):
     """Load data from a CSV file
     """
     available_models = list(models.MODEL_CLASSES.keys())
@@ -241,16 +244,33 @@ def load(debug, offset, limit, note, model, csv_path, username):
     if limit:
         limit = int(limit)
     sql_class = models.MODEL_CLASSES[model]
+    prepped_data = sql_class.prep_data()
     rowds = csvfile.make_rowds(
         fileio.read_csv(csv_path, offset, limit)
     )
     num = len(rowds)
     processed = 0
     failed = []
-    prepped_data = sql_class.prep_data()
+    noids_total = None
+    if sql_class.__name__ == 'Person':  # How many NOIDs are needed
+        noids_total = len(list(filter(lambda rowd: not rowd['nr_id'], rowds)))
+    noids = []
+    noids_assigned = 0
     for n,rowd in enumerate(tqdm(
             rowds, desc='Writing database', ascii=True, unit='record'
     )):
+        if (sql_class.__name__ == 'Person') and not rowd['nr_id']:
+            # Person.nr_id is blank
+            if not noids:
+                # get from ddridservice in batches
+                noids_to_get = noids_total - noids_assigned
+                if noids_to_get > batchsize:
+                    this_batch = batchsize
+                else:
+                    this_batch = noids_to_get
+                noids = noidminter.get_noids(this_batch)
+            rowd['nr_id'] = noids.pop(0)
+            noids_assigned += 1
         try:
             o,prepped_data = sql_class.load_rowd(rowd, prepped_data)
             if o:
