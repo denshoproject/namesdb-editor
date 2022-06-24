@@ -2,6 +2,7 @@ from django import forms
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 
+from .admin_actions import export_as_csv_action
 from .models import FarRecord, WraRecord, Person, Facility, PersonFacility
 from .models import Revision
 
@@ -65,6 +66,7 @@ class RevisionInline(GenericTabularInline):
 
 @admin.register(Facility)
 class FacilityAdmin(admin.ModelAdmin):
+    actions = [export_as_csv_action()]
     list_display = (
         'facility_id', 'facility_type', 'facility_name',
     )
@@ -93,6 +95,7 @@ class FarRecordAdminForm(forms.ModelForm):
 
 @admin.register(FarRecord)
 class FarRecordAdmin(admin.ModelAdmin):
+    actions = [export_as_csv_action()]
     list_display = (
         'far_record_id', 'facility', 'family_number', 'last_name', 'first_name',
         'year_of_birth',
@@ -100,7 +103,7 @@ class FarRecordAdmin(admin.ModelAdmin):
     list_display_links = ('far_record_id',)
     list_filter = ('facility', 'sex', 'citizenship')
     search_fields = (
-        'facility', 'original_order', 'family_number', 'far_line_id',
+        'far_record_id', 'facility', 'original_order', 'family_number', 'far_line_id',
         'last_name', 'first_name', 'other_names',
         'date_of_birth', 'year_of_birth',
         'sex', 'marital_status', 'citizenship', 'alien_registration_no',
@@ -162,6 +165,7 @@ class WraRecordAdminForm(forms.ModelForm):
 
 @admin.register(WraRecord)
 class WraRecordAdmin(admin.ModelAdmin):
+    actions = [export_as_csv_action()]
     list_display = (
         'wra_filenumber', 'facility', 'familyno',
         'lastname', 'firstname', 'middleinitial', 'birthyear',
@@ -282,6 +286,7 @@ class PersonAdminForm(forms.ModelForm):
 
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
+    actions = [export_as_csv_action()]
     list_display = (
         'nr_id', 'family_name', 'given_name', 'preferred_name', 'gender',
         'birth_date', 'wra_family_no',

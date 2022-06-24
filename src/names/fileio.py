@@ -38,7 +38,11 @@ def csv_writer(csvfile):
     )
     return writer
 
-def read_csv(path: str, limit: Optional[int]=None) -> List[Dict[str,str]]:
+def read_csv(
+        path: str,
+        offset: Optional[int]=0,
+        limit: Optional[int]=None,
+) -> List[Dict[str,str]]:
     """Read specified file, returns list of rows.
     
     >>> path = '/tmp/batch-test_write_csv.csv'
@@ -57,10 +61,17 @@ def read_csv(path: str, limit: Optional[int]=None) -> List[Dict[str,str]]:
     @param path: Absolute path to CSV file
     @returns list of rows
     """
+    offset += 1  # Account for row 0 (headers)
+    limit  += 1  #
     rows = []
     with open(path, 'r') as f:
         reader = csv_reader(f)
-        for n,row in enumerate(reader):
+        n = 0
+        for index,row in enumerate(reader):
+            # Skip rows before offset, but always get rowd 0 with headers
+            if (index != 0) and (index < offset):
+                continue
+            n += 1
             if limit and n > limit:
                 break
             rows.append(row)
