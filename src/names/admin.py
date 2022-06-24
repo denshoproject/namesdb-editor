@@ -103,7 +103,7 @@ class FarRecordAdmin(admin.ModelAdmin):
     list_display_links = ('far_record_id',)
     list_filter = ('facility', 'sex', 'citizenship')
     search_fields = (
-        'facility', 'original_order', 'family_number', 'far_line_id',
+        'far_record_id', 'facility', 'original_order', 'family_number', 'far_line_id',
         'last_name', 'first_name', 'other_names',
         'date_of_birth', 'year_of_birth',
         'sex', 'marital_status', 'citizenship', 'alien_registration_no',
