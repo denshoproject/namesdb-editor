@@ -460,6 +460,21 @@ def delete(hosts, model, record_id):
 def searchmulti(datasette, elastic, csvfile):
     """Consume output of `ddrnames export` suggest Person records for each name
     
+    Run `ddrnames help` to learn how to produce source data.
+    
+    The SQLite database must be prepared for full-text search:
+        sqlite-utils enable-fts --fts5 db/namesregistry.db names_person nr_id \
+            family_name given_name given_name_alt other_names middle_name \
+            prefix_name suffix_name jp_name preferred_name
+    
+    If you previously ran `enable-fts` with a different FTS version you should
+    run this before the previous command
+        sqlite-utils disable-fts db/namesregistry.db names_person
+    
+    Examples:
+    namesdb searchmulti /tmp/ddr-csujad-30-creators.csv --elastic
+    namesdb searchmulti /tmp/ddr-csujad-30-creators.csv --datasette
+    
     Returns: ddr_id, name_text, match_name, match_nrid, match_score
     """
     if elastic and not datasette:
