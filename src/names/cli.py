@@ -52,6 +52,7 @@ from django.conf import settings
 import requests
 from tqdm import tqdm
 
+from . import batch
 from . import csvfile
 from . import docstore
 from . import fileio
@@ -450,6 +451,26 @@ def delete(hosts, model, record_id):
         result = record.delete(using=ds.es)
     except docstore.NotFoundError as err:
         click.echo(err)
+
+@namesdb.command()
+@click.option('--preproc','-p', default='wildcard')
+@click.option('--datasette','-d', is_flag=True, default=False)
+@click.option('--elastic','-e', is_flag=True, default=True)
+@click.argument('csvfile')
+def searchmulti(preproc, datasette, elastic, csvfile):
+    """Consume output of `ddrnames export` suggest Person records for each name
+    
+    Returns: ddr_id, name_text, match_name, match_nrid, match_score
+    """
+    if preproc == 'wildcard':
+        prep_names = batch.prep_names_wildcard
+    elif preproc == 'simple':
+        prep_names = batch.prep_names_simple
+    if elastic and not datasette:
+        search = batch.fulltext_search_elastic
+    elif datasette:
+        search = batch.fulltext_search_datasette
+    batch.search_multi(csvfile, prep_names, search, click)
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
