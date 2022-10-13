@@ -479,10 +479,10 @@ def searchmulti(datasette, elastic, csvfile):
     """
     if elastic and not datasette:
         search = batch.fulltext_search_elastic
-        prep_names = batch.prep_names_simple
+        prep_names = batch.prep_names_wildcard
     elif datasette:
         search = batch.fulltext_search_datasette
-        prep_names = batch.prep_names_wildcard
+        prep_names = batch.prep_names_simple
     batch.search_multi(csvfile, prep_names, search, click)
 
 @namesdb.command()
