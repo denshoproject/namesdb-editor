@@ -10,7 +10,7 @@ from . import docstore
 from namesdb_public import models as models_public
 
 
-def search_multi(csvfile, prep_names, search):
+def search_multi(csvfile, prep_names, search, formatted=None):
     """Consume output of `ddrnames export` suggest Person records for each name
     """
     with Path(csvfile).open('r') as f:
@@ -22,6 +22,10 @@ def search_multi(csvfile, prep_names, search):
             if (oid == 'id') and (fieldname == 'fieldname'):
                 continue
             for n,preferred_name,nr_id,score in search(prep_names(names)):
+                if formatted and formatted == 'creators':
+                    creators = f'namepart: {preferred_name} | role: ROLE | nr_id: {nr_id}'
+                    yield f'"{oid}", "{names}", {n}, "{preferred_name}", ' \
+                        f'"{nr_id}", {score}, "{creators}"'
                 yield f'"{oid}", "{names}", {n}, "{preferred_name}", "{nr_id}", {score}'
 
 def prep_names_wildcard(names):
