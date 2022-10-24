@@ -18,6 +18,9 @@ def search_multi(csvfile, prep_names, search):
         f.seek(0)
         for row in csv.reader(f, dialect):
             oid,fieldname,names = row
+            # skip headers (TODO better to *read* headers)
+            if (oid == 'id') and (fieldname == 'fieldname'):
+                continue
             for n,preferred_name,nr_id,score in search(prep_names(names)):
                 yield f'"{oid}", "{names}", {n}, "{preferred_name}", "{nr_id}", {score}'
 
