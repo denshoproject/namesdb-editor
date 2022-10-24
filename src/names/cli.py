@@ -454,10 +454,11 @@ def delete(hosts, model, record_id):
 
 @namesdb.command()
 #@click.option('--preproc','-p', default='wildcard')
-@click.option('--datasette','-d', is_flag=True, default=False)
-@click.option('--elastic','-e', is_flag=True, default=True)
+@click.option('--datasette','-d', is_flag=True, default=True)
+@click.option('--elastic','-e', is_flag=True, default=False)
+@click.option('--creators','-c', is_flag=True, default=False)
 @click.argument('csvfile')
-def searchmulti(datasette, elastic, csvfile):
+def searchmulti(datasette, elastic, creators, csvfile):
     """Consume output of `ddrnames export` suggest Person records for each name
     
     Run `ddrnames help` to learn how to produce source data.
@@ -483,7 +484,11 @@ def searchmulti(datasette, elastic, csvfile):
     elif datasette:
         search = batch.fulltext_search_datasette
         prep_names = batch.prep_names_simple
-    batch.search_multi(csvfile, prep_names, search, click)
+    formatted = ''
+    if creators:
+        formatted = 'creators'
+    for row in batch.search_multi(csvfile, prep_names, search, formatted):
+        click.echo(row)
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
