@@ -454,8 +454,8 @@ def delete(hosts, model, record_id):
 
 @namesdb.command()
 #@click.option('--preproc','-p', default='wildcard')
-@click.option('--datasette','-d', is_flag=True, default=False)
-@click.option('--elastic','-e', is_flag=True, default=True)
+@click.option('--datasette','-d', is_flag=True, default=True)
+@click.option('--elastic','-e', is_flag=True, default=False)
 @click.option('--creators','-c', is_flag=True, default=False)
 @click.argument('csvfile')
 def searchmulti(datasette, elastic, creators, csvfile):
