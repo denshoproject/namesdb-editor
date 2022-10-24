@@ -483,7 +483,8 @@ def searchmulti(datasette, elastic, csvfile):
     elif datasette:
         search = batch.fulltext_search_datasette
         prep_names = batch.prep_names_simple
-    batch.search_multi(csvfile, prep_names, search, click)
+    for row in batch.search_multi(csvfile, prep_names, search):
+        click.echo(row)
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
