@@ -6,27 +6,63 @@ from django.conf import settings
 from django.db import connections
 
 from elastictools import search
+from .converters import text_to_rolepeople, rolepeople_to_text
 from . import docstore
 from namesdb_public import models as models_public
 
 
-def search_multi(csvfile, prep_names, search, formatted=None):
+def search_multi(csvfile, prep_names, search, es_class=None, formatted=None):
     """Consume output of `ddrnames export` suggest Person records for each name
+    
+    @param csvfile: str path to csvfile
+    @param prep_names: function for formatting names for search
+    @param search: function for searching in sqlite or elasticsearch
+    @param es_class: (optional) The elasticsearch-dsl class for the model
+    @param formatted: (optional) str fieldname
     """
     with Path(csvfile).open('r') as f:
         dialect = csv.Sniffer().sniff(f.read(1024))
         f.seek(0)
+        items = []
         for row in csv.reader(f, dialect):
             oid,fieldname,names = row
             # skip headers (TODO better to *read* headers)
             if (oid == 'id') and (fieldname == 'fieldname'):
                 continue
-            for n,preferred_name,nr_id,score in search(prep_names(names)):
-                if formatted and formatted == 'creators':
-                    creators = f'namepart: {preferred_name} | role: ROLE | nr_id: {nr_id}'
-                    yield f'"{oid}", "{names}", {n}, "{preferred_name}", ' \
-                        f'"{nr_id}", {score}, "{creators}"'
-                yield f'"{oid}", "{names}", {n}, "{preferred_name}", "{nr_id}", {score}'
+            # text_to_rolepeople?
+            data = text_to_rolepeople(names)
+            # if we have an nr_id, just get the Person
+            for item in data:
+                item['oid'] = oid
+                item['fieldname'] = fieldname
+                items.append(item)
+        
+        def format_result(oid, item, n, preferred_name, nr_id, score):
+            result = f'"{oid}", "{namepart}", {n}, "{preferred_name}", "{nr_id}", {score}'
+            if formatted and formatted == 'creators':
+                result = f'{result}, "{rolepeople_to_text([item])}"'
+            return result
+        
+        for item in items:
+            oid = item.pop('oid')
+            fieldname = item.pop('fieldname')
+            namepart = item['namepart']
+            if 'nr_id' in item.keys():
+                # exact match
+                record = es_class.get(item['nr_id'], request=None)
+                n,preferred_name,nr_id,score = (
+                    0,record['preferred_name'],item['nr_id'],100.0
+                )
+                yield format_result(oid, item, n, preferred_name, nr_id, score)
+            else:
+                # fulltext search
+                for n,preferred_name,nr_id,score in search(
+                        prep_names(item['namepart'])
+                ):
+                    item['nr_id'] = nr_id
+                    yield format_result(
+                        oid, item, n, preferred_name, nr_id, score
+                    )
 
 def prep_names_wildcard(names):
     """Surround each name word with wildcards e.g. "*yasui* *sachi*"."""

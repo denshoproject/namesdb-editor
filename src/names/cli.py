@@ -453,12 +453,13 @@ def delete(hosts, model, record_id):
         click.echo(err)
 
 @namesdb.command()
+@click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
 #@click.option('--preproc','-p', default='wildcard')
-@click.option('--datasette','-d', is_flag=True, default=True)
+@click.option('--datasette','-d', is_flag=True, default=False)
 @click.option('--elastic','-e', is_flag=True, default=False)
 @click.option('--creators','-c', is_flag=True, default=False)
 @click.argument('csvfile')
-def searchmulti(datasette, elastic, creators, csvfile):
+def searchmulti(hosts, datasette, elastic, creators, csvfile):
     """Consume output of `ddrnames export` suggest Person records for each name
     
     Run `ddrnames help` to learn how to produce source data.
@@ -481,13 +482,18 @@ def searchmulti(datasette, elastic, creators, csvfile):
     if elastic and not datasette:
         search = batch.fulltext_search_elastic
         prep_names = batch.prep_names_wildcard
+        model = model_w_abbreviations('person')
+        es_class = models_public.ELASTICSEARCH_CLASSES_BY_MODEL[model]
     elif datasette:
         search = batch.fulltext_search_datasette
         prep_names = batch.prep_names_simple
+        es_class = None
     formatted = ''
     if creators:
         formatted = 'creators'
-    for row in batch.search_multi(csvfile, prep_names, search, formatted):
+    for row in batch.search_multi(
+            csvfile, prep_names, search, es_class, formatted
+    ):
         click.echo(row)
 
 @namesdb.command()
