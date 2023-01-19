@@ -11,14 +11,13 @@ from . import docstore
 from namesdb_public import models as models_public
 
 
-def search_multi(csvfile, prep_names, search, es_class=None, formatted=None):
+def search_multi(csvfile, prep_names, search, es_class=None):
     """Consume output of `ddrnames export` suggest Person records for each name
     
     @param csvfile: str path to csvfile
     @param prep_names: function for formatting names for search
     @param search: function for searching in sqlite or elasticsearch
     @param es_class: (optional) The elasticsearch-dsl class for the model
-    @param formatted: (optional) str fieldname
     """
     with Path(csvfile).open('r') as f:
         dialect = csv.Sniffer().sniff(f.read(1024))
@@ -39,9 +38,7 @@ def search_multi(csvfile, prep_names, search, es_class=None, formatted=None):
         
         def format_result(oid, item, n, preferred_name, nr_id, score):
             result = f'"{oid}", "{namepart}", {n}, "{preferred_name}", "{nr_id}", {score}'
-            if formatted and formatted == 'creators':
-                result = f'{result}, "{rolepeople_to_text([item])}"'
-            return result
+            return f'{result}, "{rolepeople_to_text([item])}"'
         
         for item in items:
             oid = item.pop('oid')
