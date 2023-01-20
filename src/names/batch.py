@@ -5,20 +5,18 @@ from pathlib import Path
 from django.conf import settings
 from django.db import connections
 
-from elastictools import search
+from elastictools import docstore, search
 from .converters import text_to_rolepeople, rolepeople_to_text
 from . import docstore
+from . import models
 from namesdb_public import models as models_public
 
 
-def search_multi(csvfile, prep_names, search, es_class=None, formatted=None):
+def search_multi(csvfile, method):
     """Consume output of `ddrnames export` suggest Person records for each name
     
     @param csvfile: str path to csvfile
-    @param prep_names: function for formatting names for search
-    @param search: function for searching in sqlite or elasticsearch
-    @param es_class: (optional) The elasticsearch-dsl class for the model
-    @param formatted: (optional) str fieldname
+    @param method: str 'elastic' or 'sql'
     """
     with Path(csvfile).open('r') as f:
         dialect = csv.Sniffer().sniff(f.read(1024))
@@ -39,17 +37,25 @@ def search_multi(csvfile, prep_names, search, es_class=None, formatted=None):
         
         def format_result(oid, item, n, preferred_name, nr_id, score):
             result = f'"{oid}", "{namepart}", {n}, "{preferred_name}", "{nr_id}", {score}'
-            if formatted and formatted == 'creators':
-                result = f'{result}, "{rolepeople_to_text([item])}"'
-            return result
+            return f'{result}, "{rolepeople_to_text([item])}"'
         
+        if method == 'elastic':
+            es_class = models_public.ELASTICSEARCH_CLASSES_BY_MODEL['person']
+            search = fulltext_search_elastic
+            prep_names = prep_names_wildcard
+        elif method == 'sql':
+            search = fulltext_search_sql
+            prep_names = prep_names_simple
         for item in items:
             oid = item.pop('oid')
             fieldname = item.pop('fieldname')
             namepart = item['namepart']
             if 'nr_id' in item.keys():
                 # exact match
-                record = es_class.get(item['nr_id'], request=None)
+                if method == 'elastic':
+                    record = es_class.get(nr_id, request=None)
+                elif method == 'sql':
+                    record = get_sql(item['nr_id'])
                 n,preferred_name,nr_id,score = (
                     0,record['preferred_name'],item['nr_id'],100.0
                 )
@@ -70,7 +76,15 @@ def prep_names_wildcard(names):
 
 def prep_names_simple(names):
     """Just remove all punctuation e.g. "yasui sachi"."""
-    return names.replace(',', '').replace('.', '')
+    return ''.join([c.lower() for c in names if c.isalpha() or c.isspace()])
+
+def get_elastic(nr_id):
+    """Get record from Elasticsearch by nr_id
+    @returns for n,preferred_name,nr_id,score for each row
+    """
+    return models_public.ELASTICSEARCH_CLASSES_BY_MODEL['person'].get(
+        nr_id, request=None
+    )
 
 def fulltext_search_elastic(names, limit=25):
     """Elasticsearch fulltext search for names in namesdb_public
@@ -94,8 +108,12 @@ def fulltext_search_elastic(names, limit=25):
         for n,h in enumerate(searcher.execute(limit, 0).objects)
     ]
 
-def fulltext_search_datasette(names, limit=25):
-    """Datasette fulltext search for names in namesdb_public
+def get_sql(nr_id):
+    p = models.Person.objects.get(nr_id=nr_id)
+    return {'nr_id': p.nr_id, 'preferred_name': p.preferred_name}
+
+def fulltext_search_sql(names, limit=25):
+    """SQL fulltext search for names in namesdb_public
     @returns for n,preferred_name,nr_id,score for each row
     """
     with connections['names'].cursor() as cursor:

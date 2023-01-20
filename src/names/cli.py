@@ -454,12 +454,10 @@ def delete(hosts, model, record_id):
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
-#@click.option('--preproc','-p', default='wildcard')
-@click.option('--datasette','-d', is_flag=True, default=False)
+@click.option('--sql','-s', is_flag=True, default=False)
 @click.option('--elastic','-e', is_flag=True, default=False)
-@click.option('--creators','-c', is_flag=True, default=False)
 @click.argument('csvfile')
-def searchmulti(hosts, datasette, elastic, creators, csvfile):
+def searchmulti(hosts, sql, elastic, csvfile):
     """Consume output of `ddrnames export` suggest Person records for each name
     
     Run `ddrnames help` to learn how to produce source data.
@@ -475,25 +473,16 @@ def searchmulti(hosts, datasette, elastic, creators, csvfile):
     
     Examples:
     namesdb searchmulti /tmp/ddr-csujad-30-creators.csv --elastic
-    namesdb searchmulti /tmp/ddr-csujad-30-creators.csv --datasette
+    namesdb searchmulti /tmp/ddr-csujad-30-creators.csv --sql
     
     Returns: ddr_id, name_text, match_name, match_nrid, match_score
     """
-    if elastic and not datasette:
-        search = batch.fulltext_search_elastic
-        prep_names = batch.prep_names_wildcard
-        model = model_w_abbreviations('person')
-        es_class = models_public.ELASTICSEARCH_CLASSES_BY_MODEL[model]
-    elif datasette:
-        search = batch.fulltext_search_datasette
-        prep_names = batch.prep_names_simple
-        es_class = None
-    formatted = ''
-    if creators:
-        formatted = 'creators'
-    for row in batch.search_multi(
-            csvfile, prep_names, search, es_class, formatted
-    ):
+    if elastic: method = 'elastic'
+    elif sql: method = 'sql'
+    else:
+        click.echo('ERROR: Must choose --elastic or --datasette.')
+        sys.exit(1)
+    for row in batch.search_multi(csvfile, method):
         click.echo(row)
 
 @namesdb.command()
@@ -528,9 +517,3 @@ def exportdb(debug):
     # clean up
     c.close()
     click.echo(dst)
-
-def model_w_abbreviations(model):
-    if model in ['far','wra']:
-        # enable using 'far','wra' abbreviations
-        model = f'{model}record'
-    return model
