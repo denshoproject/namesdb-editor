@@ -5,19 +5,17 @@ from pathlib import Path
 from django.conf import settings
 from django.db import connections
 
-from elastictools import search
+from elastictools import docstore, search
 from .converters import text_to_rolepeople, rolepeople_to_text
 from . import docstore
 from namesdb_public import models as models_public
 
 
-def search_multi(csvfile, prep_names, search, es_class=None):
+def search_multi(csvfile, method):
     """Consume output of `ddrnames export` suggest Person records for each name
     
     @param csvfile: str path to csvfile
-    @param prep_names: function for formatting names for search
-    @param search: function for searching in sqlite or elasticsearch
-    @param es_class: (optional) The elasticsearch-dsl class for the model
+    @param method: str 'elastic' or 'sql'
     """
     with Path(csvfile).open('r') as f:
         dialect = csv.Sniffer().sniff(f.read(1024))
@@ -40,6 +38,13 @@ def search_multi(csvfile, prep_names, search, es_class=None):
             result = f'"{oid}", "{namepart}", {n}, "{preferred_name}", "{nr_id}", {score}'
             return f'{result}, "{rolepeople_to_text([item])}"'
         
+        if method == 'elastic':
+            es_class = models_public.ELASTICSEARCH_CLASSES_BY_MODEL['person']
+            search = fulltext_search_elastic
+            prep_names = prep_names_wildcard
+        elif method == 'sql':
+            search = fulltext_search_sql
+            prep_names = prep_names_simple
         for item in items:
             oid = item.pop('oid')
             fieldname = item.pop('fieldname')
@@ -91,8 +96,8 @@ def fulltext_search_elastic(names, limit=25):
         for n,h in enumerate(searcher.execute(limit, 0).objects)
     ]
 
-def fulltext_search_datasette(names, limit=25):
-    """Datasette fulltext search for names in namesdb_public
+def fulltext_search_sql(names, limit=25):
+    """SQL fulltext search for names in namesdb_public
     @returns for n,preferred_name,nr_id,score for each row
     """
     with connections['names'].cursor() as cursor:

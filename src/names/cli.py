@@ -477,16 +477,12 @@ def searchmulti(hosts, datasette, elastic, csvfile):
     
     Returns: ddr_id, name_text, match_name, match_nrid, match_score
     """
-    if elastic and not datasette:
-        search = batch.fulltext_search_elastic
-        prep_names = batch.prep_names_wildcard
-        model = model_w_abbreviations('person')
-        es_class = models_public.ELASTICSEARCH_CLASSES_BY_MODEL[model]
-    elif datasette:
-        search = batch.fulltext_search_datasette
-        prep_names = batch.prep_names_simple
-        es_class = None
-    for row in batch.search_multi(csvfile, prep_names, search, es_class):
+    if elastic: method = 'elastic'
+    elif datasette: method = 'sql'
+    else:
+        click.echo('ERROR: Must choose --elastic or --datasette.')
+        sys.exit(1)
+    for row in batch.search_multi(csvfile, method):
         click.echo(row)
 
 @namesdb.command()
@@ -521,9 +517,3 @@ def exportdb(debug):
     # clean up
     c.close()
     click.echo(dst)
-
-def model_w_abbreviations(model):
-    if model in ['far','wra']:
-        # enable using 'far','wra' abbreviations
-        model = f'{model}record'
-    return model
