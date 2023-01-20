@@ -8,6 +8,7 @@ from django.db import connections
 from elastictools import docstore, search
 from .converters import text_to_rolepeople, rolepeople_to_text
 from . import docstore
+from . import models
 from namesdb_public import models as models_public
 
 
@@ -51,7 +52,10 @@ def search_multi(csvfile, method):
             namepart = item['namepart']
             if 'nr_id' in item.keys():
                 # exact match
-                record = es_class.get(item['nr_id'], request=None)
+                if method == 'elastic':
+                    record = es_class.get(nr_id, request=None)
+                elif method == 'sql':
+                    record = get_sql(item['nr_id'])
                 n,preferred_name,nr_id,score = (
                     0,record['preferred_name'],item['nr_id'],100.0
                 )
@@ -72,7 +76,15 @@ def prep_names_wildcard(names):
 
 def prep_names_simple(names):
     """Just remove all punctuation e.g. "yasui sachi"."""
-    return names.replace(',', '').replace('.', '')
+    return ''.join([c.lower() for c in names if c.isalpha() or c.isspace()])
+
+def get_elastic(nr_id):
+    """Get record from Elasticsearch by nr_id
+    @returns for n,preferred_name,nr_id,score for each row
+    """
+    return models_public.ELASTICSEARCH_CLASSES_BY_MODEL['person'].get(
+        nr_id, request=None
+    )
 
 def fulltext_search_elastic(names, limit=25):
     """Elasticsearch fulltext search for names in namesdb_public
@@ -95,6 +107,10 @@ def fulltext_search_elastic(names, limit=25):
         (n, h.preferred_name, h.nr_id, h.meta.score)
         for n,h in enumerate(searcher.execute(limit, 0).objects)
     ]
+
+def get_sql(nr_id):
+    p = models.Person.objects.get(nr_id=nr_id)
+    return {'nr_id': p.nr_id, 'preferred_name': p.preferred_name}
 
 def fulltext_search_sql(names, limit=25):
     """SQL fulltext search for names in namesdb_public
