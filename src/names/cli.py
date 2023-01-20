@@ -480,7 +480,7 @@ def searchmulti(hosts, sql, elastic, csvfile):
     if elastic: method = 'elastic'
     elif sql: method = 'sql'
     else:
-        click.echo('ERROR: Must choose --elastic or --datasette.')
+        click.echo('ERROR: Must choose --elastic or --sql.')
         sys.exit(1)
     for row in batch.search_multi(csvfile, method):
         click.echo(row)
