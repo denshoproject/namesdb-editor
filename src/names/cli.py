@@ -454,10 +454,10 @@ def delete(hosts, model, record_id):
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
-@click.option('--datasette','-d', is_flag=True, default=False)
+@click.option('--sql','-s', is_flag=True, default=False)
 @click.option('--elastic','-e', is_flag=True, default=False)
 @click.argument('csvfile')
-def searchmulti(hosts, datasette, elastic, csvfile):
+def searchmulti(hosts, sql, elastic, csvfile):
     """Consume output of `ddrnames export` suggest Person records for each name
     
     Run `ddrnames help` to learn how to produce source data.
@@ -473,12 +473,12 @@ def searchmulti(hosts, datasette, elastic, csvfile):
     
     Examples:
     namesdb searchmulti /tmp/ddr-csujad-30-creators.csv --elastic
-    namesdb searchmulti /tmp/ddr-csujad-30-creators.csv --datasette
+    namesdb searchmulti /tmp/ddr-csujad-30-creators.csv --sql
     
     Returns: ddr_id, name_text, match_name, match_nrid, match_score
     """
     if elastic: method = 'elastic'
-    elif datasette: method = 'sql'
+    elif sql: method = 'sql'
     else:
         click.echo('ERROR: Must choose --elastic or --datasette.')
         sys.exit(1)
