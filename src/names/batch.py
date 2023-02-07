@@ -11,6 +11,8 @@ from . import docstore
 from . import models
 from namesdb_public import models as models_public
 
+PERSONS_DEFAULT_DICT = {'namepart':''}
+
 
 def search_multi(csvfile, method):
     """Consume output of `ddrnames export` suggest Person records for each name
@@ -27,8 +29,10 @@ def search_multi(csvfile, method):
             # skip headers (TODO better to *read* headers)
             if (oid == 'id') and (fieldname == 'fieldname'):
                 continue
+            if names == '':
+                continue
             # text_to_rolepeople?
-            data = text_to_rolepeople(names)
+            data = text_to_rolepeople(names, PERSONS_DEFAULT_DICT)
             # if we have an nr_id, just get the Person
             for item in data:
                 item['oid'] = oid
