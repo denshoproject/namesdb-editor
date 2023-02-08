@@ -169,7 +169,7 @@ get-namesdb-editor:
 	@echo "get-namesdb-editor -----------------------------------------------------"
 	git pull
 
-install-namesdb-editor: install-virtualenv install-setuptools
+install-namesdb-editor: install-virtualenv install-setuptools git-safe-dir
 	@echo ""
 	@echo "install namesdb-editor -------------------------------------------------"
 	apt-get --assume-yes install imagemagick libjpeg-dev $(LIBMARIADB_PKG) libxml2 libxslt1.1 libxslt1-dev
@@ -193,6 +193,12 @@ install-namesdb-editor: install-virtualenv install-setuptools
 	-mkdir -p $(MEDIA_ROOT)
 	chown -R ddr.root $(MEDIA_BASE)
 	chmod -R 755 $(MEDIA_BASE)
+
+git-safe-dir:
+	@echo ""
+	@echo "git-safe-dir -----------------------------------------------------------"
+	sudo -u ddr git config --global --add safe.directory $(INSTALLDIR)
+	sudo -u ddr git config --global --add safe.directory $(INSTALL_PUBLIC)
 
 setup-names-editor:
 	source $(VIRTUALENV)/bin/activate; \
