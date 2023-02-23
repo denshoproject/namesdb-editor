@@ -41,7 +41,7 @@ def csv_writer(csvfile):
 def read_csv(
         path: str,
         offset: Optional[int]=0,
-        limit: Optional[int]=None,
+        limit: Optional[int]=1_000_000,
 ) -> List[Dict[str,str]]:
     """Read specified file, returns list of rows.
     

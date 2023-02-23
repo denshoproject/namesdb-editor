@@ -1,4 +1,3 @@
-import csv
 from collections import namedtuple
 from pathlib import Path
 
@@ -8,6 +7,7 @@ from django.db import connections
 from elastictools import docstore, search
 from .converters import text_to_rolepeople, rolepeople_to_text
 from . import docstore
+from . import fileio
 from . import models
 from namesdb_public import models as models_public
 
@@ -20,24 +20,21 @@ def search_multi(csvfile, method):
     @param csvfile: str path to csvfile
     @param method: str 'elastic' or 'sql'
     """
-    with Path(csvfile).open('r') as f:
-        dialect = csv.Sniffer().sniff(f.read(1024))
-        f.seek(0)
+    for row in fileio.read_csv(csvfile):
         items = []
-        for row in csv.reader(f, dialect):
-            oid,fieldname,names = row
-            # skip headers (TODO better to *read* headers)
-            if (oid == 'id') and (fieldname == 'fieldname'):
-                continue
-            if names == '':
-                continue
-            # text_to_rolepeople?
-            data = text_to_rolepeople(names, PERSONS_DEFAULT_DICT)
-            # if we have an nr_id, just get the Person
-            for item in data:
-                item['oid'] = oid
-                item['fieldname'] = fieldname
-                items.append(item)
+        oid,fieldname,names = row
+        # skip headers (TODO better to *read* headers)
+        if (oid == 'id') and (fieldname == 'fieldname'):
+            continue
+        if names == '':
+            continue
+        # text_to_rolepeople?
+        data = text_to_rolepeople(names, PERSONS_DEFAULT_DICT)
+        # if we have an nr_id, just get the Person
+        for item in data:
+            item['oid'] = oid
+            item['fieldname'] = fieldname
+            items.append(item)
         
         def format_result(oid, item, n, preferred_name, nr_id, score):
             result = f'"{oid}", "{namepart}", {n}, "{preferred_name}", "{nr_id}", {score}'
