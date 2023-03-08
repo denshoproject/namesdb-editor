@@ -14,12 +14,18 @@ from namesdb_public import models as models_public
 PERSONS_DEFAULT_DICT = {'namepart':''}
 
 
-def search_multi(csvfile, method):
+def search_multi(csvfile, method, show_headers):
     """Consume output of `ddrnames export` suggest Person records for each name
     
     @param csvfile: str path to csvfile
     @param method: str 'elastic' or 'sql'
+    @param headers: bool show_headers
     """
+    def format_result(oid, item, n, preferred_name, nr_id, score):
+        result = f'"{oid}", "{namepart}", {n}, "{preferred_name}", "{nr_id}", {score}'
+        return f'{result}, "{rolepeople_to_text([item])}"'
+    if show_headers:
+        yield '"objectid", "namepart", "n", "preferred_name", "nr_id", "score", "sample"'
     for row in fileio.read_csv(csvfile):
         items = []
         oid,fieldname,names = row
@@ -35,11 +41,6 @@ def search_multi(csvfile, method):
             item['oid'] = oid
             item['fieldname'] = fieldname
             items.append(item)
-        
-        def format_result(oid, item, n, preferred_name, nr_id, score):
-            result = f'"{oid}", "{namepart}", {n}, "{preferred_name}", "{nr_id}", {score}'
-            return f'{result}, "{rolepeople_to_text([item])}"'
-        
         if method == 'elastic':
             es_class = models_public.ELASTICSEARCH_CLASSES_BY_MODEL['person']
             search = fulltext_search_elastic

@@ -456,8 +456,9 @@ def delete(hosts, model, record_id):
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
 @click.option('--sql','-s', is_flag=True, default=False)
 @click.option('--elastic','-e', is_flag=True, default=False)
+@click.option('--noheaders','-n', is_flag=True, default=False)
 @click.argument('csvfile')
-def searchmulti(hosts, sql, elastic, csvfile):
+def searchmulti(hosts, sql, elastic, noheaders, csvfile):
     """Consume output of `ddrnames export` suggest Person records for each name
     
     Run `ddrnames help` to learn how to produce source data.
@@ -482,7 +483,7 @@ def searchmulti(hosts, sql, elastic, csvfile):
     else:
         click.echo('ERROR: Must choose --elastic or --sql.')
         sys.exit(1)
-    for row in batch.search_multi(csvfile, method):
+    for row in batch.search_multi(csvfile, method, not noheaders):
         click.echo(row)
 
 @namesdb.command()
