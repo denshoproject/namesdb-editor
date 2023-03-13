@@ -1,5 +1,6 @@
 import codecs
 import csv
+import io
 import json
 import os
 import sys
@@ -37,6 +38,16 @@ def csv_writer(csvfile):
         quotechar=CSV_QUOTECHAR,
     )
     return writer
+
+def csv_str_writer():
+    output = io.StringIO()
+    writer = csv.writer(
+        output,
+        delimiter=CSV_DELIMITER,
+        quoting=CSV_QUOTING,
+        quotechar=CSV_QUOTECHAR,
+    )
+    return output,writer
 
 def read_csv(
         path: str,
@@ -76,3 +87,15 @@ def read_csv(
                 break
             rows.append(row)
     return rows
+
+def write_csv_str(row: Dict[str,str]) -> str:
+    """Write row to CSV formatted str
+    
+    TODO refactor. This makes a new CSV writer, writes a line, closes the output,
+    and discards the writer for each row, so it's probably really inefficient
+    """
+    output,writer = csv_str_writer()
+    writer.writerow(row)
+    contents = output.getvalue()
+    output.close()
+    return contents.strip()

@@ -22,10 +22,16 @@ def search_multi(csvfile, method, show_headers):
     @param headers: bool show_headers
     """
     def format_result(oid, item, n, preferred_name, nr_id, score):
-        result = f'"{oid}", "{namepart}", {n}, "{preferred_name}", "{nr_id}", {score}'
-        return f'{result}, "{rolepeople_to_text([item])}"'
+        row = [
+            oid, namepart, n, preferred_name, nr_id, score,
+            rolepeople_to_text([item])
+        ]
+        return fileio.write_csv_str(row)
     if show_headers:
-        yield '"objectid", "namepart", "n", "preferred_name", "nr_id", "score", "sample"'
+        headers = [
+            'objectid','namepart','n','preferred_name','nr_id','score','sample'
+        ]
+        yield fileio.write_csv_str(headers)
     for row in fileio.read_csv(csvfile):
         items = []
         oid,fieldname,names = row
