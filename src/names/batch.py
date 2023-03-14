@@ -22,14 +22,16 @@ def search_multi(csvfile, method, show_headers):
     @param headers: bool show_headers
     """
     def format_result(oid, item, n, preferred_name, nr_id, score):
+        matching = ''  # empty column for archivists to enter matches
         row = [
             oid, namepart, n, preferred_name, nr_id, score,
-            rolepeople_to_text([item])
+            matching,rolepeople_to_text([item])
         ]
         return fileio.write_csv_str(row)
     if show_headers:
         headers = [
-            'objectid','namepart','n','preferred_name','nr_id','score','sample'
+            'objectid','namepart','n','preferred_name','nr_id','score',
+            'matching','sample'
         ]
         yield fileio.write_csv_str(headers)
     for row in fileio.read_csv(csvfile):
