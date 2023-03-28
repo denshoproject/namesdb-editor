@@ -234,18 +234,22 @@ class IreiRecordAdminForm(forms.ModelForm):
 class IreiRecordAdmin(admin.ModelAdmin):
     actions = [export_as_csv_action()]
     list_display = (
-        'irei_id', 'person',
+        'person', 'irei_id', 'lastname', 'firstname', 'middlename', 'birthday',
     )
     list_display_links = ('irei_id',)
+    list_filter = ('birthday',)
+    #date_hierarchy = 'birthday'
     search_fields = (
-        'irei_id', 'person',
+        'person', 'irei_id', 'lastname', 'firstname', 'middlename', 'birthday',
     )
     autocomplete_fields = ['person',]
     readonly_fields = ('timestamp',)
     #form = IreiRecordAdminForm
     fieldsets = (
         (None, {'fields': (
-            ('irei_id'),
+            ('irei_id', 'lastname'),
+            ('firstname', 'middlename'),
+            'birthday',
             ('person', 'timestamp'),
         )}),
     )
@@ -312,7 +316,7 @@ class IreiRecordInline(admin.TabularInline):
     extra = 0
     show_change_link = True
     fields = (
-        'irei_id',
+        'irei_id', 'lastname', 'firstname', 'middlename', 'birthday',
     )
 
     def has_add_permission(self, request, obj): return False
