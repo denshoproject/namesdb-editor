@@ -296,6 +296,7 @@ class PersonAdmin(admin.ModelAdmin):
         'gender', 'citizenship',
         'preexclusion_residence_state', 'postexclusion_residence_state',
     )
+    date_hierarchy = 'birth_date'
     search_fields = (
             'nr_id', 'timestamp',
             'family_name', 'given_name',
