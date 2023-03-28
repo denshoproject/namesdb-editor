@@ -971,6 +971,40 @@ class WraRecordPerson():
         super(WraRecord, self).save()
 
 
+class IreiRecord(models.Model):
+    """
+    For some reason Django did not make a migration for IreiRecord so...
+    CREATE TABLE IF NOT EXISTS "names_ireirecord" (
+        "irei_id" varchar(255) NOT NULL PRIMARY KEY,
+        "person_id" varchar(255) NULL REFERENCES "names_person" ("nr_id") DEFERRABLE INITIALLY DEFERRED,
+        "timestamp" datetime NOT NULL
+    );
+    CREATE INDEX "names_ireirecord_person_id_876c7772" ON "names_ireirecord" ("person_id");
+    """
+    irei_id   = models.CharField(max_length=255, primary_key=1, verbose_name='Irei ID', help_text="")
+    person    = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
+    timestamp = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
+
+    class Meta:
+        verbose_name = "Irei Record"
+
+    def __repr__(self):
+        return '<{}(irei_id={})>'.format(
+            self.__class__.__name__, self.irei_id
+        )
+
+    def __str__(self):
+        return self.irei_id
+
+
+class IreiRecordPerson():
+    """Fake class used for importing IreiRecord->Person links"""
+
+    def save(self, *args, **kwargs):
+        """Save IreiRecord"""
+        super(IreiRecord, self).save()
+
+
 class Revision(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.CharField(max_length=30)
