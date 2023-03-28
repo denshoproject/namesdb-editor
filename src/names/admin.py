@@ -235,22 +235,23 @@ class IreiRecordAdmin(admin.ModelAdmin):
     actions = [export_as_csv_action()]
     list_display = (
         'person', 'irei_id', 'lastname', 'firstname', 'middlename', 'birthday',
+        'fetch_ts',
     )
     list_display_links = ('irei_id',)
-    list_filter = ('birthday',)
+    list_filter = ('birthday', 'fetch_ts',)
     #date_hierarchy = 'birthday'
     search_fields = (
         'person', 'irei_id', 'lastname', 'firstname', 'middlename', 'birthday',
     )
     autocomplete_fields = ['person',]
-    readonly_fields = ('timestamp',)
+    readonly_fields = ('fetch_ts',)
     #form = IreiRecordAdminForm
     fieldsets = (
         (None, {'fields': (
             ('irei_id', 'lastname'),
             ('firstname', 'middlename'),
             'birthday',
-            ('person', 'timestamp'),
+            ('person', 'fetch_ts'),
         )}),
     )
 

@@ -981,7 +981,7 @@ class IreiRecord(models.Model):
         "firstname" varchar(255) NOT NULL,
         "middlename" varchar(255) NOT NULL,
         "birthday" varchar(255) NOT NULL,
-        "timestamp" datetime NOT NULL
+        "fetch_ts" datetime NOT NULL
     );
     CREATE INDEX "names_ireirecord_person_id_876c7772" ON "names_ireirecord" ("person_id");
     """
@@ -991,7 +991,7 @@ class IreiRecord(models.Model):
     middlename = models.CharField(max_length=255, blank=1, verbose_name='Middle name')
     birthday   = models.CharField(max_length=255, blank=1, verbose_name='Birthday')
     person    = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
-    timestamp = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
+    fetch_ts  = models.DateTimeField(auto_now_add=True,   verbose_name='Last fetched')
 
     class Meta:
         verbose_name = "Irei Record"
