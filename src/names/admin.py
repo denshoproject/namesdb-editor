@@ -323,7 +323,7 @@ class IreiRecordInline(admin.TabularInline):
     extra = 0
     show_change_link = True
     fields = (
-        'irei_id', 'lastname', 'firstname', 'middlename', 'birthday',
+        'irei_id', 'lastname', 'firstname', 'middlename', 'preferredname', 'birthday',
     )
 
     def has_add_permission(self, request, obj): return False
