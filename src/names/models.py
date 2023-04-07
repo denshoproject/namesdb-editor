@@ -991,7 +991,7 @@ class IreiRecord(models.Model):
     firstname  = models.CharField(max_length=255, blank=1, verbose_name='First name')
     middlename = models.CharField(max_length=255, blank=1, verbose_name='Middle name')
     preferredname = models.CharField(max_length=255, blank=1, verbose_name='Preferred name')
-    birthday   = models.CharField(max_length=255, blank=1, verbose_name='Birthday')
+    birthday   = models.DateField(max_length=255, blank=1, verbose_name='Birthday')
     person    = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
     fetch_ts  = models.DateTimeField(auto_now_add=True,   verbose_name='Last fetched')
 
