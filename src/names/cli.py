@@ -518,3 +518,9 @@ def exportdb(debug):
     # clean up
     c.close()
     click.echo(dst)
+
+def model_w_abbreviations(model):
+    if model in ['far','wra']:
+        # enable using 'far','wra' abbreviations
+        model = f'{model}record'
+    return model
