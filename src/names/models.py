@@ -1006,13 +1006,39 @@ class IreiRecord(models.Model):
     def __str__(self):
         return self.irei_id
 
+    @staticmethod
+    def load_rowd(rowd):
+        """Given a JSON dict from a list, return an IreiRecord object
+        
+        Reads data files from irei-fetch/ireizo-api-fetch-v2.py
+        """
+        try:
+            o = IreiRecord.objects.get(
+                irei_id=rowd['irei_id']
+            )
+        except IreiRecord.DoesNotExist:
+            o = IreiRecord()
+        for key,val in rowd.items():
+            if val:
+                if isinstance(val, str):
+                    val = val.replace('00:00:00', '').strip()
+                setattr(o, key, val)
+        return o
+
+IREIRECORD_FIELDS = [
+    'person_id',
+    'fetch_ts',
+    'irei_id',
+    'birthday',
+    'lastname',
+    'firstname',
+    'middlename',
+    'preferredname',
+]
+
 
 class IreiRecordPerson():
     """Fake class used for importing IreiRecord->Person links"""
-
-    def save(self, *args, **kwargs):
-        """Save IreiRecord"""
-        super(IreiRecord, self).save()
 
 
 class Revision(models.Model):
@@ -1170,6 +1196,8 @@ MODEL_CLASSES = {
     'wrarecord': WraRecord,
     'farrecordperson': FarRecordPerson,
     'wrarecordperson': WraRecordPerson,
+    'ireirecord': IreiRecord,
+    'ireirecordperson': IreiRecordPerson,
 }
 
 def dump_csv(output, model_class, ids, search, cols, limit=None, debug=False):

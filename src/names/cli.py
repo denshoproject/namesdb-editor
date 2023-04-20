@@ -37,6 +37,7 @@ Note: You can set environment variables for HOSTS and INDEX.:
 """
 
 from datetime import datetime
+import json
 from pathlib import Path
 import os
 import shutil
@@ -231,10 +232,10 @@ NOTE_DEFAULT = 'Load from CSV'
 @click.option('--note','-n', default=NOTE_DEFAULT,
               help=f'Optional note (default: "{NOTE_DEFAULT}".')
 @click.argument('model')
-@click.argument('csv_path')
+@click.argument('datafile')
 @click.argument('username')
-def load(debug, batchsize, offset, limit, note, model, csv_path, username):
-    """Load data from a CSV file
+def load(debug, batchsize, offset, limit, note, model, datafile, username):
+    """Load data from a data file
     """
     available_models = list(models.MODEL_CLASSES.keys())
     if model not in available_models:
@@ -245,9 +246,15 @@ def load(debug, batchsize, offset, limit, note, model, csv_path, username):
     if limit:
         limit = int(limit)
     sql_class = models.MODEL_CLASSES[model]
+    if model == 'ireirecord':
+        load_irei(datafile, sql_class, username, note)
+    else:
+        load_csv(datafile, sql_class, offset, limit, username, note)
+
+def load_csv(datafile, sql_class, offset, limit, username, note):
     prepped_data = sql_class.prep_data()
     rowds = csvfile.make_rowds(
-        fileio.read_csv(csv_path, offset, limit)
+        fileio.read_csv(datafile, offset, limit)
     )
     num = len(rowds)
     processed = 0
@@ -288,6 +295,40 @@ def load(debug, batchsize, offset, limit, note, model, csv_path, username):
         click.echo('FAILED ROWS')
     for f in failed:
         click.echo(f)
+
+def load_irei(datafile, sql_class, username, note):
+    """Load data files from irei-fetch/ireizo-api-fetch-v2.py
+    [
+        {
+            "person": {
+                "firstName": "Yaeichi",
+                "middleName": "",
+                "lastName": "Ota",
+                "birthday": "1852-11-20",
+                "fetch_ts": "2023-04-20"
+            }
+        },
+        ...
+    """
+    with Path(datafile).open('r') as f:
+        # yes I know these are not rowds from a CSV file
+        rowds = json.loads(f.read())
+    num = len(rowds)
+    for n,rowd in enumerate(tqdm(
+            rowds, desc='Writing database', ascii=True, unit='record'
+    )):
+        # fields in right order then add values
+        r = {fieldname: None for fieldname in models.IREIRECORD_FIELDS}
+        for k,v in rowd['person'].items():
+            r[k.lower()] = v
+        try:
+            o = sql_class.load_rowd(r)
+            if o:
+                o.save()
+        except:
+            err = sys.exc_info()[0]
+            click.echo(f'FAIL {rowd} {err}')
+            raise
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
