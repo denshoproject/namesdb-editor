@@ -201,6 +201,7 @@ git-safe-dir:
 	sudo -u ddr git config --global --add safe.directory $(INSTALL_PUBLIC)
 
 setup-names-editor:
+	-rm $(APPDIR)/namesdb_public/namesdb_public
 	source $(VIRTUALENV)/bin/activate; \
 	cd $(APPDIR)/ && python setup.py install
 
