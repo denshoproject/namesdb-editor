@@ -974,26 +974,27 @@ class WraRecordPerson():
 class IreiRecord(models.Model):
     """
     For some reason Django did not make a migration for IreiRecord so...
+    
     CREATE TABLE IF NOT EXISTS "names_ireirecord" (
         "person_id" varchar(255) NULL REFERENCES "names_person" ("nr_id") DEFERRABLE INITIALLY DEFERRED,
+        "fetch_ts" datetime NOT NULL,
         "irei_id" varchar(255) NOT NULL PRIMARY KEY,
+        "birthday" varchar(255) NOT NULL,
         "lastname" varchar(255) NOT NULL,
         "firstname" varchar(255) NOT NULL,
         "middlename" varchar(255) NOT NULL,
-        "preferredname" varchar(255) NOT NULL,
-        "birthday" varchar(255) NOT NULL,
-        "fetch_ts" datetime NOT NULL
+        "preferredname" varchar(255) NOT NULL
     );
     CREATE INDEX "names_ireirecord_person_id_876c7772" ON "names_ireirecord" ("person_id");
     """
     irei_id   = models.CharField(max_length=255, primary_key=1, verbose_name='Irei ID')
+    person    = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
+    fetch_ts  = models.DateTimeField(auto_now_add=True,   verbose_name='Last fetched')
+    birthday   = models.DateField(max_length=255, blank=1, verbose_name='Birthday')
     lastname   = models.CharField(max_length=255, blank=1, verbose_name='Last name')
     firstname  = models.CharField(max_length=255, blank=1, verbose_name='First name')
     middlename = models.CharField(max_length=255, blank=1, verbose_name='Middle name')
     preferredname = models.CharField(max_length=255, blank=1, verbose_name='Preferred name')
-    birthday   = models.DateField(max_length=255, blank=1, verbose_name='Birthday')
-    person    = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
-    fetch_ts  = models.DateTimeField(auto_now_add=True,   verbose_name='Last fetched')
 
     class Meta:
         verbose_name = "Irei Record"
