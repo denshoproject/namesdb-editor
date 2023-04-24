@@ -976,9 +976,10 @@ class IreiRecord(models.Model):
     For some reason Django did not make a migration for IreiRecord so...
     
     CREATE TABLE IF NOT EXISTS "names_ireirecord" (
+        -- "irei_id" varchar(255) NOT NULL PRIMARY KEY,
+        "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
         "person_id" varchar(255) NULL REFERENCES "names_person" ("nr_id") DEFERRABLE INITIALLY DEFERRED,
         "fetch_ts" datetime NOT NULL,
-        "irei_id" varchar(255) NOT NULL PRIMARY KEY,
         "birthday" varchar(255) NOT NULL,
         "lastname" varchar(255) NOT NULL,
         "firstname" varchar(255) NOT NULL,
@@ -987,7 +988,7 @@ class IreiRecord(models.Model):
     );
     CREATE INDEX "names_ireirecord_person_id_876c7772" ON "names_ireirecord" ("person_id");
     """
-    irei_id   = models.CharField(max_length=255, primary_key=1, verbose_name='Irei ID')
+    #irei_id   = models.CharField(max_length=255, primary_key=1, verbose_name='Irei ID')
     person    = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
     fetch_ts  = models.DateTimeField(auto_now_add=True,   verbose_name='Last fetched')
     birthday   = models.DateField(max_length=255, blank=1, verbose_name='Birthday')
@@ -999,13 +1000,13 @@ class IreiRecord(models.Model):
     class Meta:
         verbose_name = "Irei Record"
 
-    def __repr__(self):
-        return '<{}(irei_id={})>'.format(
-            self.__class__.__name__, self.irei_id
-        )
+    #def __repr__(self):
+    #    return '<{}(irei_id={})>'.format(
+    #        self.__class__.__name__, self.irei_id
+    #    )
 
-    def __str__(self):
-        return self.irei_id
+    #def __str__(self):
+    #    return self.irei_id
 
     @staticmethod
     def load_rowd(rowd):
@@ -1014,8 +1015,12 @@ class IreiRecord(models.Model):
         Reads data files from irei-fetch/ireizo-api-fetch-v2.py
         """
         try:
+            #o = IreiRecord.objects.get( irei_id=rowd['irei_id'] )
             o = IreiRecord.objects.get(
-                irei_id=rowd['irei_id']
+                birthday=rowd['birthday'],
+                lastname=rowd['lastname'],
+                firstname=rowd['firstname'],
+                middlename=rowd['middlename'],
             )
         except IreiRecord.DoesNotExist:
             o = IreiRecord()
@@ -1029,7 +1034,7 @@ class IreiRecord(models.Model):
 IREIRECORD_FIELDS = [
     'person_id',
     'fetch_ts',
-    'irei_id',
+    #'irei_id',
     'birthday',
     'lastname',
     'firstname',
