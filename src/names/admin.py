@@ -241,8 +241,8 @@ class IreiRecordAdmin(admin.ModelAdmin):
     )
     #list_display_links = ('irei_id',)
     list_display_links = ('lastname','firstname',)
-    list_filter = ('birthday', 'fetch_ts',)
-    #date_hierarchy = 'birthday'
+    list_filter = ('fetch_ts',)
+    #date_hierarchy = 'birthdate'
     search_fields = (
         #'person', 'irei_id',
         'person',

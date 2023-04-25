@@ -45,6 +45,7 @@ import sqlite3
 import sys
 
 import click
+from dateutil import parser
 # Django must be initialized before settings can be accessed
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'editor.settings')
 import django

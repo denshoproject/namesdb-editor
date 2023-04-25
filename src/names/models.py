@@ -981,6 +981,7 @@ class IreiRecord(models.Model):
         "person_id" varchar(255) NULL REFERENCES "names_person" ("nr_id") DEFERRABLE INITIALLY DEFERRED,
         "fetch_ts" datetime NOT NULL,
         "birthday" varchar(255) NOT NULL,
+        -- "birthdate" date,
         "lastname" varchar(255) NOT NULL,
         "firstname" varchar(255) NOT NULL,
         "middlename" varchar(255) NOT NULL,
@@ -991,7 +992,8 @@ class IreiRecord(models.Model):
     #irei_id   = models.CharField(max_length=255, primary_key=1, verbose_name='Irei ID')
     person    = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
     fetch_ts  = models.DateTimeField(auto_now_add=True,   verbose_name='Last fetched')
-    birthday   = models.DateField(max_length=255, blank=1, verbose_name='Birthday')
+    birthday   = models.CharField(max_length=255, blank=1, verbose_name='Birthday')
+    #birthdate  = models.DateField(max_length=255, blank=1, verbose_name='Birth date')
     lastname   = models.CharField(max_length=255, blank=1, verbose_name='Last name')
     firstname  = models.CharField(max_length=255, blank=1, verbose_name='First name')
     middlename = models.CharField(max_length=255, blank=1, verbose_name='Middle name')
@@ -1014,10 +1016,15 @@ class IreiRecord(models.Model):
         
         Reads data files from irei-fetch/ireizo-api-fetch-v2.py
         """
+        #try:
+        #    birth_date = parser.parse(rowd['birthday'])
+        #except parser._parser.ParserError:
+        #    birth_date = None
         try:
             #o = IreiRecord.objects.get( irei_id=rowd['irei_id'] )
             o = IreiRecord.objects.get(
                 birthday=rowd['birthday'],
+                #birthdate=birth_date,
                 lastname=rowd['lastname'],
                 firstname=rowd['firstname'],
                 middlename=rowd['middlename'],
@@ -1036,6 +1043,7 @@ IREIRECORD_FIELDS = [
     'fetch_ts',
     #'irei_id',
     'birthday',
+    #'birthdate',
     'lastname',
     'firstname',
     'middlename',
