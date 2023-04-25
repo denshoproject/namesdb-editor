@@ -62,8 +62,10 @@ from . import noidminter
 from . import publish
 from namesdb_public import models as models_public
 
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-@click.group()
+
+@click.group(context_settings=CONTEXT_SETTINGS)
 @click.option('--debug','-d', is_flag=True, default=False)
 def namesdb(debug):
     """namesdb - Tools for working with FAR and WRA records
