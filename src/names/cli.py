@@ -239,7 +239,8 @@ def load(debug, batchsize, offset, limit, note, model, datafile, username):
     """
     available_models = list(models.MODEL_CLASSES.keys())
     if model not in available_models:
-        click.echo(f'{model} is not one of {available_models}')
+        click.echo(f'ERROR: Bad model "{model}".')
+        click.echo(f'Choices: {", ".join(available_models)}')
         sys.exit(1)
     if offset:
         offset = int(offset)
