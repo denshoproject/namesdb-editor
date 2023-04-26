@@ -979,7 +979,7 @@ class IreiRecord(models.Model):
         -- "irei_id" varchar(255) NOT NULL PRIMARY KEY,
         "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
         "person_id" varchar(255) NULL REFERENCES "names_person" ("nr_id") DEFERRABLE INITIALLY DEFERRED,
-        "fetch_ts" datetime NOT NULL,
+        "fetch_ts" date NOT NULL,
         "birthday" varchar(255) NOT NULL,
         -- "birthdate" date,
         "lastname" varchar(255) NOT NULL,
@@ -991,7 +991,7 @@ class IreiRecord(models.Model):
     """
     #irei_id   = models.CharField(max_length=255, primary_key=1, verbose_name='Irei ID')
     person    = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
-    fetch_ts  = models.DateTimeField(auto_now_add=True,   verbose_name='Last fetched')
+    fetch_ts  = models.DateField(auto_now_add=True,   verbose_name='Last fetched')
     birthday   = models.CharField(max_length=255, blank=1, verbose_name='Birthday')
     #birthdate  = models.DateField(max_length=255, blank=1, verbose_name='Birth date')
     lastname   = models.CharField(max_length=255, blank=1, verbose_name='Last name')
