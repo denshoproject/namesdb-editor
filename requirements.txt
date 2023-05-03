@@ -9,6 +9,6 @@ requests
 tabulate
 tqdm
 
-git+https://github.com/denshoproject/densho-elastictools.git
+git+https://github.com/denshoproject/densho-elastictools.git@v1.0.2
 
 bpython
