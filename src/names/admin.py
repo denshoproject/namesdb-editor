@@ -111,7 +111,7 @@ class FarRecordAdmin(admin.ModelAdmin):
         'entry_type_code', 'entry_type', 'entry_category', 'entry_facility',
         'pre_evacuation_address', 'pre_evacuation_state', 'date_of_original_entry',
         'departure_type_code', 'departure_type', 'departure_category',
-        'departure_facility', 'departure_date', 'departure_state',
+        'departure_facility', 'departure_date', 'departure_destination', 'departure_state',
         'camp_address_original', 'camp_address_block', 'camp_address_barracks',
         'camp_address_room', 'reference', 'original_notes',
     )
@@ -138,7 +138,7 @@ class FarRecordAdmin(admin.ModelAdmin):
             'departure_category',
             'departure_facility',
             'departure_date',
-            'departure_state',
+            ('departure_destination', 'departure_state',),
             'camp_address_original',
             ('camp_address_block', 'camp_address_barracks', 'camp_address_room',),
             'reference',
