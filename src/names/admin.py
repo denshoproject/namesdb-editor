@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 
 from .admin_actions import export_as_csv_action
+from . import converters
 from .models import FarRecord, WraRecord, Person, Facility, PersonFacility
 from .models import IreiRecord
 from .models import Revision
@@ -381,10 +382,11 @@ class PersonAdmin(admin.ModelAdmin):
         PersonFacilityInline, FarRecordInline, WraRecordInline, RevisionInline,
         IreiRecordInline,
     ]
-    readonly_fields = ('nr_id', 'timestamp',)
+    readonly_fields = ('nr_id', 'timestamp', 'rolepeople_text')
     fieldsets = (
         (None, {'fields': (
             ('nr_id', 'timestamp'),
+            'rolepeople_text',
             ('family_name', 'given_name'),
             'given_name_alt',
             'other_names',
@@ -405,6 +407,13 @@ class PersonAdmin(admin.ModelAdmin):
         )}),
     )
     form = PersonAdminForm
+
+    @admin.display(description="web form/CSV text")
+    def rolepeople_text(self, instance):
+        return converters.rolepeople_to_text([{
+            'namepart': instance.preferred_name,
+            'nr_id': instance.nr_id,
+        }]) + ';'
 
     def save_model(self, request, obj, form, change):
         # request.user and notes are used by Revision
