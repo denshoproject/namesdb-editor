@@ -541,6 +541,28 @@ CREATE TABLE IF NOT EXISTS "names_personlocation" (
 );
 CREATE INDEX "names_personlocation_person_id_293d3cbb" ON "names_personlocation" ("person_id");
 
+# Migrate PersonFacility data using simple brute-force
+from names.models import PersonFacility, PersonLocation
+objects = PersonFacility.objects.all()
+num = len(objects)
+for n,pf in enumerate(objects):
+    if n % 100 == 0:
+        print(f"{n}/{num} {pf}")
+    pl = PersonLocation(person=pf.person, facility=pf.facility, entry_date=pf.entry_date, exit_date=pf.exit_date, sort_start=pf.entry_date, sort_end=pf.exit_date).save()
+
+# Dump PersonFacility, process the JSONL, loaddata
+python src/manage.py dumpdata --database=names --format=jsonl -o ./db/namesdb-sg-20230614-1630.jsonl names.PersonFacility
+import json
+with open('./db/namesdb-sg-20230614-1630.jsonl', 'r') as f:
+    data = [json.loads(line) for line in f.readlines()]
+for d in data:
+    d['fields']['sort_start'] = d['fields'].get('entry_date', '')
+    d['fields']['sort_end']   = d['fields'].get('exit_date',  '')
+lines = '\n'.join([json.dumps(d) for d in data])
+with open('./db/namesdb-sg-20230614-1630-sorts.jsonl', 'w') as f:
+    f.write(lines)
+python src/manage.py loaddata --database=names ./db/namesdb-sg-20230614-1630-sorts.jsonl
+
     """
     person      = models.ForeignKey(Person, on_delete=models.DO_NOTHING)
     location    = models.CharField(max_length=255, blank=0, verbose_name='Location', help_text='Display text of location name')
