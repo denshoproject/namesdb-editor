@@ -495,6 +495,82 @@ class PersonFacility(models.Model):
         return d
 
 
+class PersonLocation(models.Model):
+    """
+TODO (namesdb) like PersonLocation, more general than PersonFacility
+include things like precamp city and postcamp city
+diff levels of accuracy, from street addr to just country ("Japan")
+don't use separate Locations table, just store e.g. startdate, edndate, coutnry, region, state, city, addr, lat, lng
+
+# TODO load PersonLocation
+# - CACHE country,state,city,address for facility
+# - FOR Person MAKE PersonLocations
+#   - birthdate and birthplace  (sort 00)
+#   - preexclusion city,state   (sort 20)
+#   - FOR PersonFacility,       (sort 40)
+#     - entry_date, exit_date, facilty id
+#       PLUS country,state,city,address for facility
+#   - postdetention city,state  (sort 60)
+
+https://docs.google.com/spreadsheets/d/1Kh1uuCtufA2bJTSF_gyAR83Ai4YmeKiiZcwQM3EhNio/edit?pli=1#gid=843779669
+NAME             LABEL	          TYPE	REQUIRED  REPEATABLE  DESCRIPTION
+location_text	 Location	  str	TRUE		      Display text of location name
+geo_lat	         Latitude	  float	FALSE		      Geocoded latitude
+geo_long	 Longitude	  float	FALSE		      Geocoded longitude
+entry_date	 From	          date	FALSE		      Date of arrival
+exit_date	 To	          date	FALSE		      Date of departure
+sort_date_start	 Sort Order Start date	FALSE		      Date of arrival for sort purposes only. Not for display.
+sort_date_end	 Sort Order End	  date	FALSE		      Date of departure for sort purposes only. Not for display.
+facility_id	 Facility ID		FALSE		      Facility from Densho CV (if applicable)
+facility_address Facility Address str	FALSE		      Address inside facility (if applicable)
+description	 Notes	          str	FALSE		      Details of the Person's time at the location
+
+CREATE TABLE IF NOT EXISTS "names_personlocation" (
+    "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "person_id" varchar(255) NOT NULL REFERENCES "names_person" ("nr_id") DEFERRABLE INITIALLY DEFERRED,
+    "location" varchar(255),
+    "geo_lat" float NULL,
+    "geo_lng" float NULL,
+    "entry_date" date NULL,
+    "exit_date" date NULL,
+    "sort_start" date NULL,
+    "sort_end" date NULL,
+    "facility_id" varchar(30) REFERENCES "names_facility" ("facility_id") DEFERRABLE INITIALLY DEFERRED,
+    "facility_address" varchar(255),
+    "notes" varchar(255)
+);
+CREATE INDEX "names_personlocation_person_id_293d3cbb" ON "names_personlocation" ("person_id");
+
+    """
+    person      = models.ForeignKey(Person, on_delete=models.DO_NOTHING)
+    location    = models.CharField(max_length=255, blank=0, verbose_name='Location', help_text='Display text of location name')
+    geo_lat     = models.FloatField(blank=1, verbose_name='Latitude',  help_text='Geocoded latitude')
+    geo_lng     = models.FloatField(blank=1, verbose_name='Longitude', help_text='Geocoded longitude')
+    entry_date  = models.DateField(blank=1, verbose_name='From', help_text='Date of arrival')
+    exit_date   = models.DateField(blank=1, verbose_name='To',   help_text='Date of departure')
+    sort_start  = models.DateField(blank=1, verbose_name='Sort Start', help_text='Date of arrival for sort purposes only. Not for display.')
+    sort_end    = models.DateField(blank=1, verbose_name='Sort End',   help_text='Date of departure for sort purposes only. Not for display.')
+    facility    = models.ForeignKey(Facility, null=1, blank=1, on_delete=models.DO_NOTHING, verbose_name='Facility', help_text='Facility from Densho CV (if applicable)')
+    facility_address = models.CharField(max_length=255, blank=1, verbose_name='Facility Address', help_text='Address inside facility (if applicable)')
+    notes       = models.TextField(blank=1, verbose_name='Notes', help_text="Details of the Person's time at the location")
+
+    class Meta:
+        verbose_name = 'Person-Location'
+        verbose_name_plural = 'Person-Locations'
+
+    def dict(self, n=None):
+        """JSON-serializable dict
+        """
+        d = {}
+        if n:
+            d['n'] = n
+        for fieldname in FIELDS_PERSONLOCATION:
+            if getattr(self, fieldname):
+                value = getattr(self, fieldname)
+                d[fieldname] = value
+        return d
+
+
 class FarRecord(models.Model):
     far_record_id           = models.CharField(max_length=255, primary_key=1, verbose_name='FAR Record ID', help_text="Derived from FAR ledger id + line id ('original_order')")
     facility                = models.CharField(max_length=255,          verbose_name='Facility', help_text='Identifier of WRA facility')
