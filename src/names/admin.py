@@ -4,7 +4,8 @@ from django.contrib.contenttypes.admin import GenericTabularInline
 
 from .admin_actions import export_as_csv_action
 from . import converters
-from .models import FarRecord, WraRecord, Person, Facility, PersonFacility
+from .models import Facility, FarRecord, WraRecord
+from .models import Person, PersonFacility, PersonLocation
 from .models import IreiRecord
 from .models import Revision
 
@@ -284,6 +285,61 @@ class PersonFacilityInline(admin.TabularInline):
     def has_delete_permission(self, request, obj): return True
 
 
+class PersonLocationInline(admin.TabularInline):
+    model = PersonLocation
+    ordering = ('sort_start',)
+    extra = 0
+    show_change_link = True
+    fields = (
+        'person',
+        'entry_date', 'exit_date', 'sort_start', 'sort_end',
+        'location', 'facility', 'facility_address',
+    )
+    #autocomplete_fields = ['person',]
+
+    def has_add_permission(self, request, obj): return False
+    def has_change_permission(self, request, obj): return False
+    def has_delete_permission(self, request, obj): return False
+
+
+class PersonLocationAdminForm(forms.ModelForm):
+    """Adds link to Person in Person field help_text"""
+    def __init__(self, *args, **kwargs):
+        super(PersonLocationAdminForm, self).__init__(*args, **kwargs)
+        person = self.instance.person
+        if person:
+            url = person.admin_url()
+            name = person.preferred_name
+            self.fields['person'].help_text = f'&#8618; <a href="{url}">{name}</a>'
+
+@admin.register(PersonLocation)
+class PersonLocationAdmin(admin.ModelAdmin):
+    list_display = (
+        'person', 'location',
+        #'geo_lat', 'geo_lng',
+        'entry_date', 'exit_date', 'sort_start', 'sort_end',
+        'facility', 'facility_address',
+    )
+    #list_display_links = ('title',)
+    list_filter = ('facility',)
+    #date_hierarchy = 'entry_date'
+    search_fields = (
+        'person', 'location', 'facility_address', 'notes',
+    )
+    autocomplete_fields = ['person','facility',]
+    fieldsets = (
+        (None, {'fields': (
+            'person',
+            'location',
+            ('geo_lat', 'geo_lng'),
+            ('entry_date', 'sort_start'),
+            ('exit_date', 'sort_end'),
+            'facility', 'facility_address',
+            'notes',
+        )}),
+    )
+
+
 class FarRecordInline(admin.TabularInline):
     model = FarRecord
     extra = 0
@@ -379,7 +435,9 @@ class PersonAdmin(admin.ModelAdmin):
             'exclusion_order_title', 'exclusion_order_id',
     )
     inlines = [
-        PersonFacilityInline, FarRecordInline, WraRecordInline, RevisionInline,
+        PersonLocationInline,
+        PersonFacilityInline,
+        FarRecordInline, WraRecordInline, RevisionInline,
         IreiRecordInline,
     ]
     readonly_fields = ('nr_id', 'timestamp', 'rolepeople_text')
