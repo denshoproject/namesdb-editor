@@ -551,17 +551,18 @@ for n,pf in enumerate(objects):
     pl = PersonLocation(person=pf.person, facility=pf.facility, entry_date=pf.entry_date, exit_date=pf.exit_date, sort_start=pf.entry_date, sort_end=pf.exit_date).save()
 
 # Dump PersonFacility, process the JSONL, loaddata
-python src/manage.py dumpdata --database=names --format=jsonl -o ./db/namesdb-sg-20230614-1630.jsonl names.PersonFacility
+python src/manage.py dumpdata --database=names --format=jsonl -o ./db/namesdb-kyuzo-YYYYMMDD-HHMM.jsonl names.PersonFacility
 import json
-with open('./db/namesdb-sg-20230614-1630.jsonl', 'r') as f:
+with open('./db/namesdb-kyuzo-YYYYMMDD-HHMM.jsonl', 'r') as f:
     data = [json.loads(line) for line in f.readlines()]
 for d in data:
+    d['model'] = 'names.personlocation'
     d['fields']['sort_start'] = d['fields'].get('entry_date', '')
     d['fields']['sort_end']   = d['fields'].get('exit_date',  '')
 lines = '\n'.join([json.dumps(d) for d in data])
-with open('./db/namesdb-sg-20230614-1630-sorts.jsonl', 'w') as f:
+with open('./db/namesdb-kyuzo-YYYYMMDD-HHMM-sorts.jsonl', 'w') as f:
     f.write(lines)
-python src/manage.py loaddata --database=names ./db/namesdb-sg-20230614-1630-sorts.jsonl
+python src/manage.py loaddata --database=names ./db/namesdb-kyuzo-YYYYMMDD-HHMM-sorts.jsonl
 
     """
     person      = models.ForeignKey(Person, on_delete=models.DO_NOTHING)
