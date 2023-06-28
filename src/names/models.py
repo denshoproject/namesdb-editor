@@ -196,12 +196,22 @@ class Person(models.Model):
                 o.other_names = '\n'.join(names)
         if rowd.get('birth_date'):
             try:
-                o.birth_date = parser.parse(rowd.pop('birth_date'))
+                o.birth_date = parser.parse(rowd.pop('birth_date')).date()
+            except parser._parser.ParserError:
+                pass
+        elif rowd.get('birth_date_text'):
+            try:
+                o.birth_date = parser.parse(rowd.pop('birth_date_text')).date()
             except parser._parser.ParserError:
                 pass
         if rowd.get('death_date'):
             try:
-                o.death_date = parser.parse(rowd.pop('death_date'))
+                o.death_date = parser.parse(rowd.pop('death_date')).date()
+            except parser._parser.ParserError:
+                pass
+        elif rowd.get('death_date_text'):
+            try:
+                o.death_date = parser.parse(rowd.pop('death_date_text')).date()
             except parser._parser.ParserError:
                 pass
         if rowd.get('facility'):
@@ -213,6 +223,11 @@ class Person(models.Model):
             if isinstance(val, str):
                 val = val.replace('00:00:00', '').strip()
             setattr(o, key, val)
+        # Django doesn't like date values of ''
+        if o.birth_date == '':
+            o.birth_date = None
+        if o.death_date == '':
+            o.death_date = None
         return o,prepped_data
 
     def save(self, *args, **kwargs):
