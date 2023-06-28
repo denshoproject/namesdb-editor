@@ -178,12 +178,14 @@ class Person(models.Model):
         """
         if rowd.get('nr_id'):
             try:
+                # update existing Person
                 o = Person.objects.get(nr_id=rowd['nr_id'])
             except Person.DoesNotExist:
-                o = Person()
+                # new Person
+                o = Person(nr_id=rowd['nr_id'])
         else:
+            # new Person and get noid
             o = Person()
-        if not o.nr_id:
             o.nr_id = o._get_noid()
         # special cases
         if rowd.get('other_names'):
