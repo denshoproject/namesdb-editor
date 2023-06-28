@@ -263,24 +263,19 @@ def load_csv(datafile, sql_class, offset, limit, username, note):
     num = len(rowds)
     processed = 0
     failed = []
-    noids_total = None
-    if sql_class.__name__ == 'Person':  # How many NOIDs are needed
-        noids_total = len(list(filter(lambda rowd: not rowd['nr_id'], rowds)))
     noids = []
+    if sql_class.__name__ == 'Person':  # How many NOIDs are needed
+        # rowds with empty 'nr_id' fields
+        noids_to_get = len(list(filter(lambda rowd: not rowd['nr_id'], rowds)))
+        if noids_to_get:
+            # get from ddridservice in batch
+            click.echo(f"Getting {noids_to_get} NRIDS")
+            noids = noidminter.get_noids(noids_to_get)
     noids_assigned = 0
     for n,rowd in enumerate(tqdm(
             rowds, desc='Writing database', ascii=True, unit='record'
     )):
         if (sql_class.__name__ == 'Person') and not rowd['nr_id']:
-            # Person.nr_id is blank
-            if not noids:
-                # get from ddridservice in batches
-                noids_to_get = noids_total - noids_assigned
-                if noids_to_get > batchsize:
-                    this_batch = batchsize
-                else:
-                    this_batch = noids_to_get
-                noids = noidminter.get_noids(this_batch)
             rowd['nr_id'] = noids.pop(0)
             noids_assigned += 1
         try:
