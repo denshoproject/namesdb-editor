@@ -239,6 +239,19 @@ NOTE_DEFAULT = 'Load from CSV'
 @click.argument('username')
 def load(debug, batchsize, offset, limit, note, model, datafile, username):
     """Load data from a data file
+    
+    See names.models.MODEL_CLASSES
+    
+    \b
+    Load from CSV
+        namesdb load MODEL namesdb-MODEL-YYYYMMDD.csv USERNAME
+    
+    \b
+    Load Ireizo data (retrieved using ireizo-fetch/ireizo-api-fetch-v*.py)
+        namesdb load ireirecord ./output/api-people-1.json gjost
+        namesdb load ireirecord ./output/api-people-2.json gjost
+        namesdb load ireirecord ./output/api-people-3.json gjost
+        ...
     """
     available_models = list(models.MODEL_CLASSES.keys())
     if model not in available_models:
