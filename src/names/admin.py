@@ -247,7 +247,6 @@ class IreiRecordAdmin(admin.ModelAdmin):
     #date_hierarchy = 'birthdate'
     search_fields = (
         #'person', 'irei_id',
-        'person',
         'lastname', 'firstname', 'middlename', 'preferredname', 'birthday',
     )
     autocomplete_fields = ['person',]
