@@ -170,13 +170,13 @@ class WraRecordAdminForm(forms.ModelForm):
 class WraRecordAdmin(admin.ModelAdmin):
     actions = [export_as_csv_action()]
     list_display = (
-        'wra_filenumber', 'facility', 'familyno',
+        'wra_record_id', 'facility', 'familyno',
         'lastname', 'firstname', 'middleinitial', 'birthyear',
     )
-    list_display_links = ('wra_filenumber',)
+    list_display_links = ('wra_record_id',)
     list_filter = ('facility', 'assemblycenter', 'birthcountry',)
     search_fields = (
-        'wra_filenumber', 'facility',
+        'wra_record_id', 'facility',
         'lastname', 'firstname', 'middleinitial',
         'birthyear', 'gender', 'originalstate', 'familyno', 'individualno',
         'notes', 'assemblycenter', 'originaladdress', 'birthcountry',
@@ -193,7 +193,7 @@ class WraRecordAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {'fields': (
             ('person', 'timestamp'),
-            ('wra_filenumber', 'wra_record_id'),
+            ('wra_record_id', 'wra_filenumber'),
             'facility',
             ('lastname', 'firstname', 'middleinitial'),
             'birthyear',
