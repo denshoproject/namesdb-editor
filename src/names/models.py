@@ -110,6 +110,31 @@ class Facility(models.Model):
             setattr(facility, key, val)
         return facility,prepped_data
 
+    @staticmethod
+    def load_from_vocab(rowd):
+        """Load data files from densho-vocab/api/0.2/facility.json
+        """
+        data = {
+            'facility_id':   rowd['sos_facility_id'],
+            'facility_type': rowd['type'],
+            'title':         rowd['title'],
+            'location_label': rowd['location']['label'],
+            'location_lat':   rowd['location']['geopoint']['lat'],
+            'location_lng':   rowd['location']['geopoint']['lng'],
+            #'encyc_title': rowd['elinks']['label'],
+            #'encyc_url':   rowd['elinks']['url'],
+        }
+        # update or new
+        try:
+            facility = Facility.objects.get(
+                facility_id=data['facility_id']
+            )
+        except Facility.DoesNotExist:
+            facility = Facility()
+        for key,val in data.items():
+            setattr(facility, key, val)
+        return facility
+
     def save(self, *args, **kwargs):
         """Save Facility, ignoring usernames and notes"""
         super(Facility, self).save()
