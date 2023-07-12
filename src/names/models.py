@@ -67,8 +67,13 @@ class NamesRouter:
 
 class Facility(models.Model):
     facility_id   = models.CharField(max_length=30, primary_key=True, verbose_name='Facility ID',   help_text='ID of facility where detained')
-    facility_type = models.CharField(max_length=30,                   verbose_name='Facility Type', help_text='Type of facility where detained')
-    facility_name = models.CharField(max_length=30,                   verbose_name='Facility Name', help_text='Name of facility where detained')
+    facility_type = models.CharField(max_length=255,  blank=0, verbose_name='Facility Type', help_text='Type of facility where detained')
+    title         = models.CharField(max_length=255,  blank=0, verbose_name='Facility Name', help_text='Name of facility where detained')
+    location_label = models.CharField(max_length=255, blank=1, verbose_name='Location Label', help_text='')
+    location_lat   = models.FloatField(               blank=1, verbose_name='Latitude',       help_text='')
+    location_lng   = models.FloatField(               blank=1, verbose_name='Longitude',      help_text='')
+    encyc_title    = models.CharField(max_length=255, blank=1, verbose_name='Encyclopedia title', help_text='')
+    encyc_url      = models.URLField(max_length=255,  blank=1, verbose_name='Encyclopedia URL',   help_text='')
 
     class Meta:
         verbose_name = 'Facility'
@@ -90,8 +95,8 @@ class Facility(models.Model):
                     data[fieldname] = rowd.get(field)
         data = {}
         normalize_fieldname(rowd, data, 'facility_id',   ['facility_id', 'id'])
-        normalize_fieldname(rowd, data, 'facility_name', ['facility_name', 'name'])
         normalize_fieldname(rowd, data, 'facility_type', ['facility_type', 'type', 'category'])
+        normalize_fieldname(rowd, data, 'title', ['facility_name', 'name', 'title'])
         if not data.get('facility_type'):
             data['facility_type'] = 'other'
         # update or new
