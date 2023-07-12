@@ -67,8 +67,13 @@ class NamesRouter:
 
 class Facility(models.Model):
     facility_id   = models.CharField(max_length=30, primary_key=True, verbose_name='Facility ID',   help_text='ID of facility where detained')
-    facility_type = models.CharField(max_length=30,                   verbose_name='Facility Type', help_text='Type of facility where detained')
-    facility_name = models.CharField(max_length=30,                   verbose_name='Facility Name', help_text='Name of facility where detained')
+    facility_type = models.CharField(max_length=255,  blank=0, verbose_name='Facility Type', help_text='Type of facility where detained')
+    title         = models.CharField(max_length=255,  blank=0, verbose_name='Facility Name', help_text='Name of facility where detained')
+    location_label = models.CharField(max_length=255, blank=1, verbose_name='Location Label', help_text='')
+    location_lat   = models.FloatField(               blank=1, verbose_name='Latitude',       help_text='')
+    location_lng   = models.FloatField(               blank=1, verbose_name='Longitude',      help_text='')
+    encyc_title    = models.CharField(max_length=255, blank=1, verbose_name='Encyclopedia title', help_text='')
+    encyc_url      = models.URLField(max_length=255,  blank=1, verbose_name='Encyclopedia URL',   help_text='')
 
     class Meta:
         verbose_name = 'Facility'
@@ -90,8 +95,8 @@ class Facility(models.Model):
                     data[fieldname] = rowd.get(field)
         data = {}
         normalize_fieldname(rowd, data, 'facility_id',   ['facility_id', 'id'])
-        normalize_fieldname(rowd, data, 'facility_name', ['facility_name', 'name'])
         normalize_fieldname(rowd, data, 'facility_type', ['facility_type', 'type', 'category'])
+        normalize_fieldname(rowd, data, 'title', ['facility_name', 'name', 'title'])
         if not data.get('facility_type'):
             data['facility_type'] = 'other'
         # update or new
@@ -104,6 +109,31 @@ class Facility(models.Model):
         for key,val in data.items():
             setattr(facility, key, val)
         return facility,prepped_data
+
+    @staticmethod
+    def load_from_vocab(rowd):
+        """Load data files from densho-vocab/api/0.2/facility.json
+        """
+        data = {
+            'facility_id':   rowd['sos_facility_id'],
+            'facility_type': rowd['type'],
+            'title':         rowd['title'],
+            'location_label': rowd['location']['label'],
+            'location_lat':   rowd['location']['geopoint']['lat'],
+            'location_lng':   rowd['location']['geopoint']['lng'],
+            #'encyc_title': rowd['elinks']['label'],
+            #'encyc_url':   rowd['elinks']['url'],
+        }
+        # update or new
+        try:
+            facility = Facility.objects.get(
+                facility_id=data['facility_id']
+            )
+        except Facility.DoesNotExist:
+            facility = Facility()
+        for key,val in data.items():
+            setattr(facility, key, val)
+        return facility
 
     def save(self, *args, **kwargs):
         """Save Facility, ignoring usernames and notes"""

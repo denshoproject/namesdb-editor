@@ -71,16 +71,20 @@ class RevisionInline(GenericTabularInline):
 class FacilityAdmin(admin.ModelAdmin):
     actions = [export_as_csv_action()]
     list_display = (
-        'facility_id', 'facility_type', 'facility_name',
+        'facility_id', 'facility_type', 'title',
     )
     list_display_links = ('facility_id',)
     list_filter = ('facility_type',)
     search_fields = (
-        'facility_id', 'facility_type', 'facility_name',
+        'facility_id', 'facility_type', 'title',
     )
     fieldsets = (
         (None, {'fields': (
-            'facility_id', 'facility_type', 'facility_name'
+            ('facility_id', 'facility_type'),
+            'title',
+            'location_label',
+             ('location_lat', 'location_lng'),
+            #('encyc_title', 'encyc_url'),
         )}),
     )
 

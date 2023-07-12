@@ -252,6 +252,10 @@ def load(debug, batchsize, offset, limit, note, model, datafile, username):
         namesdb load ireirecord ./output/api-people-2.json gjost
         namesdb load ireirecord ./output/api-people-3.json gjost
         ...
+    
+    \b
+    Load Facility data from densho-vocab
+        namesdb load facility /opt/densho-vocab/api/0.2/facility.json USERNAME
     """
     available_models = list(models.MODEL_CLASSES.keys())
     if model not in available_models:
@@ -265,6 +269,8 @@ def load(debug, batchsize, offset, limit, note, model, datafile, username):
     sql_class = models.MODEL_CLASSES[model]
     if model == 'ireirecord':
         load_irei(datafile, sql_class, username, note)
+    elif model == 'facility':
+        load_facility(datafile, sql_class, username, note)
     else:
         load_csv(datafile, sql_class, offset, limit, username, note)
 
@@ -335,6 +341,21 @@ def load_irei(datafile, sql_class, username, note):
             r[k.lower()] = v
         try:
             o = sql_class.load_rowd(r)
+            if o:
+                o.save()
+        except:
+            err = sys.exc_info()[0]
+            click.echo(f'FAIL {rowd} {err}')
+            raise
+
+def load_facility(datafile, sql_class, username, note):
+    """Load data files from densho-vocab/api/0.2/facility.json
+    """
+    with Path(datafile).open('r') as f:
+        rowds = json.loads(f.read())['terms']
+    for n,rowd in enumerate(rowds):
+        try:
+            o = sql_class.load_from_vocab(rowd)
             if o:
                 o.save()
         except:
