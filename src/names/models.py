@@ -67,8 +67,13 @@ class NamesRouter:
 
 class Facility(models.Model):
     facility_id   = models.CharField(max_length=30, primary_key=True, verbose_name='Facility ID',   help_text='ID of facility where detained')
-    facility_type = models.CharField(max_length=30,                   verbose_name='Facility Type', help_text='Type of facility where detained')
-    facility_name = models.CharField(max_length=30,                   verbose_name='Facility Name', help_text='Name of facility where detained')
+    facility_type = models.CharField(max_length=255,  blank=0, verbose_name='Facility Type', help_text='Type of facility where detained')
+    title         = models.CharField(max_length=255,  blank=0, verbose_name='Facility Name', help_text='Name of facility where detained')
+    location_label = models.CharField(max_length=255, blank=1, verbose_name='Location Label', help_text='')
+    location_lat   = models.FloatField(               blank=1, verbose_name='Latitude',       help_text='')
+    location_lng   = models.FloatField(               blank=1, verbose_name='Longitude',      help_text='')
+    encyc_title    = models.CharField(max_length=255, blank=1, verbose_name='Encyclopedia title', help_text='')
+    encyc_url      = models.URLField(max_length=255,  blank=1, verbose_name='Encyclopedia URL',   help_text='')
 
     class Meta:
         verbose_name = 'Facility'
@@ -90,8 +95,8 @@ class Facility(models.Model):
                     data[fieldname] = rowd.get(field)
         data = {}
         normalize_fieldname(rowd, data, 'facility_id',   ['facility_id', 'id'])
-        normalize_fieldname(rowd, data, 'facility_name', ['facility_name', 'name'])
         normalize_fieldname(rowd, data, 'facility_type', ['facility_type', 'type', 'category'])
+        normalize_fieldname(rowd, data, 'title', ['facility_name', 'name', 'title'])
         if not data.get('facility_type'):
             data['facility_type'] = 'other'
         # update or new
@@ -105,6 +110,31 @@ class Facility(models.Model):
             setattr(facility, key, val)
         return facility,prepped_data
 
+    @staticmethod
+    def load_from_vocab(rowd):
+        """Load data files from densho-vocab/api/0.2/facility.json
+        """
+        data = {
+            'facility_id':   rowd['sos_facility_id'],
+            'facility_type': rowd['type'],
+            'title':         rowd['title'],
+            'location_label': rowd['location']['label'],
+            'location_lat':   rowd['location']['geopoint']['lat'],
+            'location_lng':   rowd['location']['geopoint']['lng'],
+            #'encyc_title': rowd['elinks']['label'],
+            #'encyc_url':   rowd['elinks']['url'],
+        }
+        # update or new
+        try:
+            facility = Facility.objects.get(
+                facility_id=data['facility_id']
+            )
+        except Facility.DoesNotExist:
+            facility = Facility()
+        for key,val in data.items():
+            setattr(facility, key, val)
+        return facility
+
     def save(self, *args, **kwargs):
         """Save Facility, ignoring usernames and notes"""
         super(Facility, self).save()
@@ -112,31 +142,31 @@ class Facility(models.Model):
 
 class Person(models.Model):
     nr_id                         = models.CharField(max_length=255, primary_key=True,      verbose_name='Names Registry ID',         help_text='Names Registry unique identifier')
-    family_name                   = models.CharField(max_length=30,                        verbose_name='Last Name',                 help_text='Preferred family or last name')
-    given_name                    = models.CharField(max_length=30,                        verbose_name='First Name',                help_text='Preferred given or first name')
-    given_name_alt                = models.TextField(max_length=30, blank=True, null=True, verbose_name='Alternative First Names',   help_text='List of alternative first names')
-    other_names                   = models.TextField(max_length=30, blank=True, null=True, verbose_name='Other Names',               help_text='List of other names')
-    middle_name                   = models.CharField(max_length=30, blank=True, null=True, verbose_name='Middle Name',               help_text='Middle name or initial')
-    prefix_name                   = models.CharField(max_length=30, blank=True, null=True, verbose_name='Name Prefix',               help_text='Professional/titular prefix. E.g., "Dr.", "Rev."')
-    suffix_name                   = models.CharField(max_length=30, blank=True, null=True, verbose_name='Name Suffix',               help_text='Name suffix. E.g., "Jr.", "Esq."')
-    jp_name                       = models.CharField(max_length=30, blank=True, null=True, verbose_name='Japanese Name',             help_text='Name in kana')
-    preferred_name                = models.CharField(max_length=30,          verbose_name='Preferred Full Name',       help_text='Preferred form of full name for display')
+    family_name                   = models.CharField(max_length=255,                        verbose_name='Last Name',                 help_text='Preferred family or last name')
+    given_name                    = models.CharField(max_length=255,                        verbose_name='First Name',                help_text='Preferred given or first name')
+    given_name_alt                = models.TextField(blank=True, null=True, verbose_name='Alternative First Names',   help_text='List of alternative first names')
+    other_names                   = models.TextField(blank=True, null=True, verbose_name='Other Names',               help_text='List of other names')
+    middle_name                   = models.CharField(max_length=255, blank=True, null=True, verbose_name='Middle Name',               help_text='Middle name or initial')
+    prefix_name                   = models.CharField(max_length=255, blank=True, null=True, verbose_name='Name Prefix',               help_text='Professional/titular prefix. E.g., "Dr.", "Rev."')
+    suffix_name                   = models.CharField(max_length=255, blank=True, null=True, verbose_name='Name Suffix',               help_text='Name suffix. E.g., "Jr.", "Esq."')
+    jp_name                       = models.CharField(max_length=255, blank=True, null=True, verbose_name='Japanese Name',             help_text='Name in kana')
+    preferred_name                = models.CharField(max_length=255,          verbose_name='Preferred Full Name',       help_text='Preferred form of full name for display')
     birth_date                    = models.DateField(max_length=30, blank=True, null=True, verbose_name='Date of Birth',             help_text='Full birthdate')
-    birth_date_text               = models.CharField(max_length=30, blank=True, null=True, verbose_name='Birthdate Text',            help_text='Text representation of birthdate, if necessary')
-    birth_place                   = models.CharField(max_length=30, blank=True, null=True, verbose_name='Birthplace',                help_text='Place of birth')
+    birth_date_text               = models.CharField(max_length=255, blank=True, null=True, verbose_name='Birthdate Text',            help_text='Text representation of birthdate, if necessary')
+    birth_place                   = models.CharField(max_length=255, blank=True, null=True, verbose_name='Birthplace',                help_text='Place of birth')
     death_date                    = models.DateField(max_length=30, blank=True, null=True, verbose_name='Date of Death',             help_text='Date of death')
-    death_date_text               = models.CharField(max_length=30, blank=True, null=True, verbose_name='Death Date Text',           help_text='Text representation of death date, if necessary')
-    wra_family_no                 = models.CharField(max_length=30, blank=True, null=True, verbose_name='Family Number',             help_text='WRA-assigned family number')
-    wra_individual_no             = models.CharField(max_length=30, blank=True, null=True, verbose_name='Individual Number',         help_text='WRA-assigned individual number')
-    citizenship                   = models.CharField(max_length=30,          verbose_name='Country of Citizenship',    help_text='Country of citizenship')
-    alien_registration_no         = models.CharField(max_length=30, blank=True, null=True, verbose_name='Alien Registration Number', help_text='INS-assigned alien registration number')
-    gender                        = models.CharField(max_length=30,          verbose_name='Gender',                    help_text='Gender')
-    preexclusion_residence_city   = models.CharField(max_length=30, blank=True, null=True, verbose_name='Pre-exclusion City',        help_text='Last city of residence prior to exclusion')
-    preexclusion_residence_state  = models.CharField(max_length=30, blank=True, null=True, verbose_name='Pre-exclusion State',       help_text='Last state of residence prior to exclusion')
-    postexclusion_residence_city  = models.CharField(max_length=30, blank=True, null=True, verbose_name='Post-detention City',       help_text='City of residence immediately following detention')
-    postexclusion_residence_state = models.CharField(max_length=30, blank=True, null=True, verbose_name='Post-detention State',      help_text='State of residence immediately following detention')
-    exclusion_order_title         = models.CharField(max_length=30, blank=True, null=True, verbose_name='Exclusion Order',           help_text='Name of U.S. Army exclusion order')
-    exclusion_order_id            = models.CharField(max_length=30, blank=True, null=True, verbose_name='Exclusion Order ID',        help_text='Order ID ')
+    death_date_text               = models.CharField(max_length=255, blank=True, null=True, verbose_name='Death Date Text',           help_text='Text representation of death date, if necessary')
+    wra_family_no                 = models.CharField(max_length=255, blank=True, null=True, verbose_name='Family Number',             help_text='WRA-assigned family number')
+    wra_individual_no             = models.CharField(max_length=255, blank=True, null=True, verbose_name='Individual Number',         help_text='WRA-assigned individual number')
+    citizenship                   = models.CharField(max_length=255,          verbose_name='Citizenship Status',    help_text='Status of US citizenship as of 1946')
+    alien_registration_no         = models.CharField(max_length=255, blank=True, null=True, verbose_name='Alien Registration Number', help_text='INS-assigned alien registration number')
+    gender                        = models.CharField(max_length=255,          verbose_name='Gender',                    help_text='Gender')
+    preexclusion_residence_city   = models.CharField(max_length=255, blank=True, null=True, verbose_name='Pre-exclusion City',        help_text='Reported city of residence at time of registration')
+    preexclusion_residence_state  = models.CharField(max_length=255, blank=True, null=True, verbose_name='Pre-exclusion State',       help_text='Reported state of residence at time of registration')
+    postexclusion_residence_city  = models.CharField(max_length=255, blank=True, null=True, verbose_name='Post-detention City',       help_text='Reported city of residence immediately following detention')
+    postexclusion_residence_state = models.CharField(max_length=255, blank=True, null=True, verbose_name='Post-detention State',      help_text='Reported state of residence immediately following detention')
+    exclusion_order_title         = models.CharField(max_length=255, blank=True, null=True, verbose_name='Exclusion Order',           help_text='Name of U.S. Army exclusion order')
+    exclusion_order_id            = models.CharField(max_length=255, blank=True, null=True, verbose_name='Exclusion Order ID',        help_text='Order ID ')
 #    record_id		blank=1	Record ID	ID of related record
 #    record_type		blank=1	Record Source	Type of related record. e.g., 'far', 'wra' 
     timestamp                     = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
@@ -178,12 +208,14 @@ class Person(models.Model):
         """
         if rowd.get('nr_id'):
             try:
+                # update existing Person
                 o = Person.objects.get(nr_id=rowd['nr_id'])
             except Person.DoesNotExist:
-                o = Person()
+                # new Person
+                o = Person(nr_id=rowd['nr_id'])
         else:
+            # new Person and get noid
             o = Person()
-        if not o.nr_id:
             o.nr_id = o._get_noid()
         # special cases
         if rowd.get('other_names'):
@@ -194,12 +226,22 @@ class Person(models.Model):
                 o.other_names = '\n'.join(names)
         if rowd.get('birth_date'):
             try:
-                o.birth_date = parser.parse(rowd.pop('birth_date'))
+                o.birth_date = parser.parse(rowd.pop('birth_date')).date()
+            except parser._parser.ParserError:
+                pass
+        elif rowd.get('birth_date_text'):
+            try:
+                o.birth_date = parser.parse(rowd.pop('birth_date_text')).date()
             except parser._parser.ParserError:
                 pass
         if rowd.get('death_date'):
             try:
-                o.death_date = parser.parse(rowd.pop('death_date'))
+                o.death_date = parser.parse(rowd.pop('death_date')).date()
+            except parser._parser.ParserError:
+                pass
+        elif rowd.get('death_date_text'):
+            try:
+                o.death_date = parser.parse(rowd.pop('death_date_text')).date()
             except parser._parser.ParserError:
                 pass
         if rowd.get('facility'):
@@ -211,6 +253,11 @@ class Person(models.Model):
             if isinstance(val, str):
                 val = val.replace('00:00:00', '').strip()
             setattr(o, key, val)
+        # Django doesn't like date values of ''
+        if o.birth_date == '':
+            o.birth_date = None
+        if o.death_date == '':
+            o.death_date = None
         return o,prepped_data
 
     def save(self, *args, **kwargs):
@@ -495,6 +542,105 @@ class PersonFacility(models.Model):
         return d
 
 
+class PersonLocation(models.Model):
+    """
+TODO (namesdb) like PersonLocation, more general than PersonFacility
+include things like precamp city and postcamp city
+diff levels of accuracy, from street addr to just country ("Japan")
+don't use separate Locations table, just store e.g. startdate, edndate, coutnry, region, state, city, addr, lat, lng
+
+# TODO load PersonLocation
+# - CACHE country,state,city,address for facility
+# - FOR Person MAKE PersonLocations
+#   - birthdate and birthplace  (sort 00)
+#   - preexclusion city,state   (sort 20)
+#   - FOR PersonFacility,       (sort 40)
+#     - entry_date, exit_date, facilty id
+#       PLUS country,state,city,address for facility
+#   - postdetention city,state  (sort 60)
+
+https://docs.google.com/spreadsheets/d/1Kh1uuCtufA2bJTSF_gyAR83Ai4YmeKiiZcwQM3EhNio/edit?pli=1#gid=843779669
+NAME             LABEL	          TYPE	REQUIRED  REPEATABLE  DESCRIPTION
+location_text	 Location	  str	TRUE		      Display text of location name
+geo_lat	         Latitude	  float	FALSE		      Geocoded latitude
+geo_long	 Longitude	  float	FALSE		      Geocoded longitude
+entry_date	 From	          date	FALSE		      Date of arrival
+exit_date	 To	          date	FALSE		      Date of departure
+sort_date_start	 Sort Order Start date	FALSE		      Date of arrival for sort purposes only. Not for display.
+sort_date_end	 Sort Order End	  date	FALSE		      Date of departure for sort purposes only. Not for display.
+facility_id	 Facility ID		FALSE		      Facility from Densho CV (if applicable)
+facility_address Facility Address str	FALSE		      Address inside facility (if applicable)
+description	 Notes	          str	FALSE		      Details of the Person's time at the location
+
+CREATE TABLE IF NOT EXISTS "names_personlocation" (
+    "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "person_id" varchar(255) NOT NULL REFERENCES "names_person" ("nr_id") DEFERRABLE INITIALLY DEFERRED,
+    "location" varchar(255),
+    "geo_lat" float NULL,
+    "geo_lng" float NULL,
+    "entry_date" date NULL,
+    "exit_date" date NULL,
+    "sort_start" date NULL,
+    "sort_end" date NULL,
+    "facility_id" varchar(30) REFERENCES "names_facility" ("facility_id") DEFERRABLE INITIALLY DEFERRED,
+    "facility_address" varchar(255),
+    "notes" varchar(255)
+);
+CREATE INDEX "names_personlocation_person_id_293d3cbb" ON "names_personlocation" ("person_id");
+
+# Migrate PersonFacility data using simple brute-force
+from names.models import PersonFacility, PersonLocation
+objects = PersonFacility.objects.all()
+num = len(objects)
+for n,pf in enumerate(objects):
+    if n % 100 == 0:
+        print(f"{n}/{num} {pf}")
+    pl = PersonLocation(person=pf.person, facility=pf.facility, entry_date=pf.entry_date, exit_date=pf.exit_date, sort_start=pf.entry_date, sort_end=pf.exit_date).save()
+
+# Dump PersonFacility, process the JSONL, loaddata
+python src/manage.py dumpdata --database=names --format=jsonl -o ./db/namesdb-kyuzo-YYYYMMDD-HHMM.jsonl names.PersonFacility
+import json
+with open('./db/namesdb-kyuzo-YYYYMMDD-HHMM.jsonl', 'r') as f:
+    data = [json.loads(line) for line in f.readlines()]
+for d in data:
+    d['model'] = 'names.personlocation'
+    d['fields']['sort_start'] = d['fields'].get('entry_date', '')
+    d['fields']['sort_end']   = d['fields'].get('exit_date',  '')
+lines = '\n'.join([json.dumps(d) for d in data])
+with open('./db/namesdb-kyuzo-YYYYMMDD-HHMM-sorts.jsonl', 'w') as f:
+    f.write(lines)
+python src/manage.py loaddata --database=names ./db/namesdb-kyuzo-YYYYMMDD-HHMM-sorts.jsonl
+
+    """
+    person      = models.ForeignKey(Person, on_delete=models.DO_NOTHING)
+    location    = models.CharField(max_length=255, blank=0, verbose_name='Location', help_text='Display text of location name')
+    geo_lat     = models.FloatField(blank=1, verbose_name='Latitude',  help_text='Geocoded latitude')
+    geo_lng     = models.FloatField(blank=1, verbose_name='Longitude', help_text='Geocoded longitude')
+    entry_date  = models.DateField(blank=1, verbose_name='From', help_text='Date of arrival')
+    exit_date   = models.DateField(blank=1, verbose_name='To',   help_text='Date of departure')
+    sort_start  = models.DateField(blank=1, verbose_name='Sort Start', help_text='Date of arrival for sort purposes only. Not for display.')
+    sort_end    = models.DateField(blank=1, verbose_name='Sort End',   help_text='Date of departure for sort purposes only. Not for display.')
+    facility    = models.ForeignKey(Facility, null=1, blank=1, on_delete=models.DO_NOTHING, verbose_name='Facility', help_text='Facility from Densho CV (if applicable)')
+    facility_address = models.CharField(max_length=255, blank=1, verbose_name='Facility Address', help_text='Address inside facility (if applicable)')
+    notes       = models.TextField(blank=1, verbose_name='Notes', help_text="Details of the Person's time at the location")
+
+    class Meta:
+        verbose_name = 'Person-Location'
+        verbose_name_plural = 'Person-Locations'
+
+    def dict(self, n=None):
+        """JSON-serializable dict
+        """
+        d = {}
+        if n:
+            d['n'] = n
+        for fieldname in FIELDS_PERSONLOCATION:
+            if getattr(self, fieldname):
+                value = getattr(self, fieldname)
+                d[fieldname] = value
+        return d
+
+
 class FarRecord(models.Model):
     far_record_id           = models.CharField(max_length=255, primary_key=1, verbose_name='FAR Record ID', help_text="Derived from FAR ledger id + line id ('original_order')")
     facility                = models.CharField(max_length=255,          verbose_name='Facility', help_text='Identifier of WRA facility')
@@ -506,10 +652,10 @@ class FarRecord(models.Model):
     other_names             = models.CharField(max_length=255, blank=1, verbose_name='Other Names', help_text='Alternate first names')
     date_of_birth           = models.CharField(max_length=255, blank=1, verbose_name='Birthdate', help_text='Full birth date')
     year_of_birth           = models.CharField(max_length=255, blank=1, verbose_name='Year of Birth', help_text='Year of birth')
-    sex                     = models.CharField(max_length=255,          verbose_name='Gender', help_text='Gender identifier')
+    sex                     = models.CharField(max_length=255, blank=1, verbose_name='Gender', help_text='Gender identifier')
     marital_status          = models.CharField(max_length=255, blank=1, verbose_name='Marital Status', help_text='Marital status')
-    citizenship             = models.CharField(max_length=255,          verbose_name='Citizenship Status', help_text='Citizenship status')
-    alien_registration_no   = models.CharField(max_length=255, blank=1, verbose_name='Alien Registration Number', help_text='INS-assigned Alien Registration number')
+    citizenship             = models.CharField(max_length=255, blank=1, verbose_name='Citizenship Status', help_text='Status of US citizenship')
+    alien_registration_no   = models.CharField(max_length=255, blank=1, verbose_name='Alien Registration Number', help_text='INS-issued Alien Registration number')
     entry_type_code         = models.CharField(max_length=255, blank=1, verbose_name='Entry Type (Coded)', help_text='Coded type of original admission and assignment to facility')
     entry_type              = models.CharField(max_length=255, blank=1, verbose_name='Entry Type', help_text='Normalized type of original entry')
     entry_category          = models.CharField(max_length=255, blank=1, verbose_name='Entry Category', help_text='Category of entry type; assigned by Densho')
@@ -522,7 +668,8 @@ class FarRecord(models.Model):
     departure_category      = models.CharField(max_length=255, blank=1, verbose_name='Departure Category', help_text='Category of departure type')
     departure_facility      = models.CharField(max_length=255, blank=1, verbose_name='Departure Facility', help_text='Departure facility, if applicable')
     departure_date          = models.CharField(max_length=255, blank=1, verbose_name='Departure Date', help_text='Date of departure from facility')
-    departure_state         = models.CharField(max_length=255, blank=1, verbose_name='Departure Destination', help_text='Destination after departure; state-only')
+    departure_destination   = models.CharField(max_length=255, blank=1, verbose_name='Departure City/Town', help_text='Destination after departure; city/town only')
+    departure_state         = models.CharField(max_length=255, blank=1, verbose_name='Departure State', help_text='Destination after departure; state only')
     camp_address_original   = models.CharField(max_length=255, blank=1, verbose_name='Camp Address', help_text='Physical address in camp in the form, "Block-Barrack-Room"')
     camp_address_block      = models.CharField(max_length=255, blank=1, verbose_name='Camp Address Block', help_text='Block identifier of camp address')
     camp_address_barracks   = models.CharField(max_length=255, blank=1, verbose_name='Camp Address Barrack', help_text='Barrack identifier of camp address')
@@ -746,7 +893,7 @@ class WraRecord(models.Model):
     notes             = models.CharField(max_length=255, blank=1, verbose_name='Notes added by Densho during processing', help_text='Notes added by Densho during processing')
     assemblycenter    = models.CharField(max_length=255,          verbose_name='Assembly center prior to camp', help_text='Assembly center prior to camp')
     originaladdress   = models.CharField(max_length=255, blank=1, verbose_name='County/city + state of pre-exclusion address (coded)', help_text='County/city + state of pre-exclusion address; coded by WRA')
-    birthcountry      = models.CharField(max_length=255,          verbose_name='Birth countries of father and mother (coded)', help_text='Birth countries of father and mother; coded by WRA')
+    birthcountry      = models.CharField(max_length=255, blank=1, verbose_name='Birth countries of father and mother (coded)', help_text='Birth countries of father and mother; coded by WRA')
     fatheroccupus     = models.CharField(max_length=255, blank=1, verbose_name="Father's occupation in the US (coded)", help_text="Father's occupation in the US; coded by WRA")
     fatheroccupabr    = models.CharField(max_length=255, blank=1, verbose_name="Father's occupation pre-emigration (coded)", help_text="Father's occupation pre-emigration; coded by WRA")
     yearsschooljapan  = models.CharField(max_length=255, blank=1, verbose_name='Years of school attended in Japan', help_text='Years of school attended in Japan')
@@ -763,11 +910,11 @@ class WraRecord(models.Model):
     highestgrade      = models.CharField(max_length=255, blank=1, verbose_name='Highest degree achieved', help_text='Highest degree achieved')
     language          = models.CharField(max_length=255, blank=1, verbose_name='Languages spoken', help_text='Languages spoken')
     religion          = models.CharField(max_length=255, blank=1, verbose_name='Religion', help_text='Religion')
-    occupqual1        = models.CharField(max_length=255, blank=1, verbose_name='Primary qualified occupation', help_text='Primary qualified occupation')
-    occupqual2        = models.CharField(max_length=255, blank=1, verbose_name='Secondary qualified occupation', help_text='Secondary qualified occupation')
-    occupqual3        = models.CharField(max_length=255, blank=1, verbose_name='Tertiary qualified occupation', help_text='Tertiary qualified occupation')
-    occuppotn1        = models.CharField(max_length=255, blank=1, verbose_name='Primary potential occupation', help_text='Primary potential occupation')
-    occuppotn2        = models.CharField(max_length=255, blank=1, verbose_name='Secondary potential occupation', help_text='Secondary potential occupation')
+    occupqual1        = models.CharField(max_length=255, blank=1, verbose_name='Primary qualified occupation', help_text='Primary qualified occupation; coded')
+    occupqual2        = models.CharField(max_length=255, blank=1, verbose_name='Secondary qualified occupation', help_text='Secondary qualified occupation; coded')
+    occupqual3        = models.CharField(max_length=255, blank=1, verbose_name='Tertiary qualified occupation', help_text='Tertiary qualified occupation; coded')
+    occuppotn1        = models.CharField(max_length=255, blank=1, verbose_name='Primary potential occupation', help_text='Primary potential occupation; coded')
+    occuppotn2        = models.CharField(max_length=255, blank=1, verbose_name='Secondary potential occupation', help_text='Secondary potential occupation; coded')
     person = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
     timestamp         = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
 
@@ -971,6 +1118,90 @@ class WraRecordPerson():
         super(WraRecord, self).save()
 
 
+class IreiRecord(models.Model):
+    """
+    For some reason Django did not make a migration for IreiRecord so...
+    
+    CREATE TABLE IF NOT EXISTS "names_ireirecord" (
+        -- "irei_id" varchar(255) NOT NULL PRIMARY KEY,
+        "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "person_id" varchar(255) NULL REFERENCES "names_person" ("nr_id") DEFERRABLE INITIALLY DEFERRED,
+        "fetch_ts" date NOT NULL,
+        "birthday" varchar(255) NOT NULL,
+        -- "birthdate" date,
+        "lastname" varchar(255) NOT NULL,
+        "firstname" varchar(255) NOT NULL,
+        "middlename" varchar(255) NOT NULL,
+        "preferredname" varchar(255) NOT NULL
+    );
+    CREATE INDEX "names_ireirecord_person_id_876c7772" ON "names_ireirecord" ("person_id");
+    """
+    #irei_id   = models.CharField(max_length=255, primary_key=1, verbose_name='Irei ID')
+    person    = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
+    fetch_ts  = models.DateField(auto_now_add=True,   verbose_name='Last fetched')
+    birthday   = models.CharField(max_length=255, blank=1, verbose_name='Birthday')
+    #birthdate  = models.DateField(max_length=255, blank=1, verbose_name='Birth date')
+    lastname   = models.CharField(max_length=255, blank=1, verbose_name='Last name')
+    firstname  = models.CharField(max_length=255, blank=1, verbose_name='First name')
+    middlename = models.CharField(max_length=255, blank=1, verbose_name='Middle name')
+    preferredname = models.CharField(max_length=255, blank=1, verbose_name='Preferred name')
+
+    class Meta:
+        verbose_name = "Irei Record"
+
+    #def __repr__(self):
+    #    return '<{}(irei_id={})>'.format(
+    #        self.__class__.__name__, self.irei_id
+    #    )
+
+    #def __str__(self):
+    #    return self.irei_id
+
+    @staticmethod
+    def load_rowd(rowd):
+        """Given a JSON dict from a list, return an IreiRecord object
+        
+        Reads data files from irei-fetch/ireizo-api-fetch-v2.py
+        """
+        #try:
+        #    birth_date = parser.parse(rowd['birthday'])
+        #except parser._parser.ParserError:
+        #    birth_date = None
+        try:
+            #o = IreiRecord.objects.get( irei_id=rowd['irei_id'] )
+            o = IreiRecord.objects.get(
+                birthday=rowd['birthday'],
+                #birthdate=birth_date,
+                lastname=rowd['lastname'],
+                firstname=rowd['firstname'],
+                middlename=rowd['middlename'],
+            )
+        except IreiRecord.DoesNotExist:
+            o = IreiRecord()
+        for key,val in rowd.items():
+            if val:
+                if isinstance(val, str):
+                    val = val.replace('00:00:00', '').strip()
+                setattr(o, key, val)
+        return o
+
+IREIRECORD_FIELDS = [
+    'person_id',
+    'fetch_ts',
+    #'irei_id',
+    'birthday',
+    #'birthdate',
+    'lastname',
+    'firstname',
+    'middlename',
+    'preferredname',
+]
+
+
+class IreiRecordPerson():
+    """Fake class used for importing IreiRecord->Person links"""
+
+
 class Revision(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.CharField(max_length=30)
@@ -1126,6 +1357,8 @@ MODEL_CLASSES = {
     'wrarecord': WraRecord,
     'farrecordperson': FarRecordPerson,
     'wrarecordperson': WraRecordPerson,
+    'ireirecord': IreiRecord,
+    'ireirecordperson': IreiRecordPerson,
 }
 
 def dump_csv(output, model_class, ids, search, cols, limit=None, debug=False):

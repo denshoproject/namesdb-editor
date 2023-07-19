@@ -37,6 +37,7 @@ Note: You can set environment variables for HOSTS and INDEX.:
 """
 
 from datetime import datetime
+import json
 from pathlib import Path
 import os
 import shutil
@@ -44,6 +45,7 @@ import sqlite3
 import sys
 
 import click
+from dateutil import parser
 # Django must be initialized before settings can be accessed
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'editor.settings')
 import django
@@ -52,6 +54,7 @@ from django.conf import settings
 import requests
 from tqdm import tqdm
 
+from . import batch
 from . import csvfile
 from . import docstore
 from . import fileio
@@ -60,8 +63,10 @@ from . import noidminter
 from . import publish
 from namesdb_public import models as models_public
 
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-@click.group()
+
+@click.group(context_settings=CONTEXT_SETTINGS)
 @click.option('--debug','-d', is_flag=True, default=False)
 def namesdb(debug):
     """namesdb - Tools for working with FAR and WRA records
@@ -230,45 +235,66 @@ NOTE_DEFAULT = 'Load from CSV'
 @click.option('--note','-n', default=NOTE_DEFAULT,
               help=f'Optional note (default: "{NOTE_DEFAULT}".')
 @click.argument('model')
-@click.argument('csv_path')
+@click.argument('datafile')
 @click.argument('username')
-def load(debug, batchsize, offset, limit, note, model, csv_path, username):
-    """Load data from a CSV file
+def load(debug, batchsize, offset, limit, note, model, datafile, username):
+    """Load data from a data file
+    
+    See names.models.MODEL_CLASSES
+    
+    \b
+    Load from CSV
+        namesdb load MODEL namesdb-MODEL-YYYYMMDD.csv USERNAME
+    
+    \b
+    Load Ireizo data (retrieved using ireizo-fetch/ireizo-api-fetch-v*.py)
+        namesdb load ireirecord ./output/api-people-1.json gjost
+        namesdb load ireirecord ./output/api-people-2.json gjost
+        namesdb load ireirecord ./output/api-people-3.json gjost
+        ...
+    
+    \b
+    Load Facility data from densho-vocab
+        namesdb load facility /opt/densho-vocab/api/0.2/facility.json USERNAME
     """
     available_models = list(models.MODEL_CLASSES.keys())
     if model not in available_models:
-        click.echo(f'{model} is not one of {available_models}')
+        click.echo(f'ERROR: Bad model "{model}".')
+        click.echo(f'Choices: {", ".join(available_models)}')
         sys.exit(1)
     if offset:
         offset = int(offset)
     if limit:
         limit = int(limit)
     sql_class = models.MODEL_CLASSES[model]
+    if model == 'ireirecord':
+        load_irei(datafile, sql_class, username, note)
+    elif model == 'facility':
+        load_facility(datafile, sql_class, username, note)
+    else:
+        load_csv(datafile, sql_class, offset, limit, username, note)
+
+def load_csv(datafile, sql_class, offset, limit, username, note):
     prepped_data = sql_class.prep_data()
     rowds = csvfile.make_rowds(
-        fileio.read_csv(csv_path, offset, limit)
+        fileio.read_csv(datafile, offset, limit)
     )
     num = len(rowds)
     processed = 0
     failed = []
-    noids_total = None
-    if sql_class.__name__ == 'Person':  # How many NOIDs are needed
-        noids_total = len(list(filter(lambda rowd: not rowd['nr_id'], rowds)))
     noids = []
+    if sql_class.__name__ == 'Person':  # How many NOIDs are needed
+        # rowds with empty 'nr_id' fields
+        noids_to_get = len(list(filter(lambda rowd: not rowd['nr_id'], rowds)))
+        if noids_to_get:
+            # get from ddridservice in batch
+            click.echo(f"Getting {noids_to_get} NRIDS")
+            noids = noidminter.get_noids(noids_to_get)
     noids_assigned = 0
     for n,rowd in enumerate(tqdm(
             rowds, desc='Writing database', ascii=True, unit='record'
     )):
         if (sql_class.__name__ == 'Person') and not rowd['nr_id']:
-            # Person.nr_id is blank
-            if not noids:
-                # get from ddridservice in batches
-                noids_to_get = noids_total - noids_assigned
-                if noids_to_get > batchsize:
-                    this_batch = batchsize
-                else:
-                    this_batch = noids_to_get
-                noids = noidminter.get_noids(this_batch)
             rowd['nr_id'] = noids.pop(0)
             noids_assigned += 1
         try:
@@ -287,6 +313,55 @@ def load(debug, batchsize, offset, limit, note, model, csv_path, username):
         click.echo('FAILED ROWS')
     for f in failed:
         click.echo(f)
+
+def load_irei(datafile, sql_class, username, note):
+    """Load data files from irei-fetch/ireizo-api-fetch-v2.py
+    [
+        {
+            "person": {
+                "firstName": "Yaeichi",
+                "middleName": "",
+                "lastName": "Ota",
+                "birthday": "1852-11-20",
+                "fetch_ts": "2023-04-20"
+            }
+        },
+        ...
+    """
+    with Path(datafile).open('r') as f:
+        # yes I know these are not rowds from a CSV file
+        rowds = json.loads(f.read())
+    num = len(rowds)
+    for n,rowd in enumerate(tqdm(
+            rowds, desc='Writing database', ascii=True, unit='record'
+    )):
+        # fields in right order then add values
+        r = {fieldname: None for fieldname in models.IREIRECORD_FIELDS}
+        for k,v in rowd['person'].items():
+            r[k.lower()] = v
+        try:
+            o = sql_class.load_rowd(r)
+            if o:
+                o.save()
+        except:
+            err = sys.exc_info()[0]
+            click.echo(f'FAIL {rowd} {err}')
+            raise
+
+def load_facility(datafile, sql_class, username, note):
+    """Load data files from densho-vocab/api/0.2/facility.json
+    """
+    with Path(datafile).open('r') as f:
+        rowds = json.loads(f.read())['terms']
+    for n,rowd in enumerate(rowds):
+        try:
+            o = sql_class.load_from_vocab(rowd)
+            if o:
+                o.save()
+        except:
+            err = sys.exc_info()[0]
+            click.echo(f'FAIL {rowd} {err}')
+            raise
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
@@ -450,6 +525,40 @@ def delete(hosts, model, record_id):
         result = record.delete(using=ds.es)
     except docstore.NotFoundError as err:
         click.echo(err)
+
+@namesdb.command()
+@click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
+@click.option('--sql','-s', is_flag=True, default=False)
+@click.option('--elastic','-e', is_flag=True, default=False)
+@click.option('--noheaders','-n', is_flag=True, default=False)
+@click.argument('csvfile')
+def searchmulti(hosts, sql, elastic, noheaders, csvfile):
+    """Consume output of `ddrnames export` suggest Person records for each name
+    
+    Run `ddrnames help` to learn how to produce source data.
+    
+    The SQLite database must be prepared for full-text search:
+        sqlite-utils enable-fts --fts5 db/namesregistry.db names_person nr_id \
+            family_name given_name given_name_alt other_names middle_name \
+            prefix_name suffix_name jp_name preferred_name
+    
+    If you previously ran `enable-fts` with a different FTS version you should
+    run this before the previous command
+        sqlite-utils disable-fts db/namesregistry.db names_person
+    
+    Examples:
+    namesdb searchmulti /tmp/ddr-csujad-30-creators.csv --elastic
+    namesdb searchmulti /tmp/ddr-csujad-30-creators.csv --sql
+    
+    Returns: ddr_id, name_text, match_name, match_nrid, match_score
+    """
+    if elastic: method = 'elastic'
+    elif sql: method = 'sql'
+    else:
+        click.echo('ERROR: Must choose --elastic or --sql.')
+        sys.exit(1)
+    for row in batch.search_multi(csvfile, method, not noheaders):
+        click.echo(row)
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
