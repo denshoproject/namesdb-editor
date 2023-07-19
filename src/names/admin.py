@@ -478,7 +478,7 @@ class PersonAdmin(admin.ModelAdmin):
     @admin.display(description="web form/CSV text")
     def rolepeople_text(self, instance):
         return converters.rolepeople_to_text([{
-            'namepart': instance.preferred_name,
+            'namepart': (instance.family_name + ", " + instance.given_name + " " + instance.middle_name).strip(),
             'nr_id': instance.nr_id,
         }]) + ';'
 
