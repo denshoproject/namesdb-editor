@@ -4,7 +4,7 @@ from django.contrib.contenttypes.admin import GenericTabularInline
 
 from .admin_actions import export_as_csv_action
 from . import converters
-from .models import Facility, FarRecord, WraRecord
+from .models import Facility, FarRecord, FarPage, WraRecord
 from .models import Person, PersonFacility, PersonLocation
 from .models import IreiRecord
 from .models import Revision
@@ -157,6 +157,32 @@ class FarRecordAdmin(admin.ModelAdmin):
         obj.user = request.user
         obj.note = ''
         super().save_model(request, obj, form, change)
+
+
+class FarPageAdminForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(FarPageAdminForm, self).__init__(*args, **kwargs)
+
+
+@admin.register(FarPage)
+class FarPageAdmin(admin.ModelAdmin):
+    actions = [export_as_csv_action()]
+    list_display = (
+        'facility', 'page', 'file_id', 'file_label',
+    )
+    list_display_links = ('file_id',)
+    list_filter = ('facility',)
+    ordering = ('facility', 'page',)
+    search_fields = (
+        'file_id', 'file_label',
+    )
+    readonly_fields = ('facility', 'page', 'file_id', 'file_label',)
+    form = FarPageAdminForm
+    fieldsets = (
+        (None, {'fields': (
+            'facility', 'page', 'file_id', 'file_label',
+        )}),
+    )
 
 
 class WraRecordAdminForm(forms.ModelForm):

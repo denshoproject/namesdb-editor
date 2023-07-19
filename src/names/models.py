@@ -878,6 +878,51 @@ class FarRecordPerson():
         super(FarRecord, self).save()
 
 
+class FarPage(models.Model):
+    """
+    CREATE TABLE IF NOT EXISTS "names_farpage" (
+        "facility_id" varchar(30) NOT NULL REFERENCES "names_facility" ("facility_id"),
+        "page" integer NOT NULL,
+        "file_id" varchar(255) NOT NULL,
+        "file_label" varchar(255)
+    );
+    CREATE INDEX "names_farpage_index" ON "names_facility" ("facility_id");
+    """
+    facility = models.ForeignKey(Facility, on_delete=models.DO_NOTHING)
+    page = models.IntegerField(blank=False)
+    file_id = models.CharField(max_length=255, primary_key=True)
+    file_label = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = "FAR Page"
+        unique_together = ('facility', 'file_id')
+
+    def __str__(self):
+        return f'{self.facility} {self.page} {self.file_id}'
+
+    @staticmethod
+    def prep_data():
+        return {
+            'facilities': {
+                f.facility_id: f
+                for f in Facility.objects.all()
+            },
+        }
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
+        o = FarPage()
+        for key,val in rowd.items():
+            if val:
+                if key == 'facility':
+                    val = prepped_data['facilities'][val]
+                setattr(o, key, val)
+        return o,prepped_data
+
+    def save(self, *args, **kwargs):
+        super(FarPage, self).save()
+
+
 class WraRecord(models.Model):
     wra_record_id     = models.CharField(max_length=255, primary_key=1, verbose_name='WRA Record ID', help_text="Derived from WRA ledger id + line id ('original_order')")
     wra_filenumber    = models.CharField(max_length=255,          verbose_name='WRA Filenumber', help_text='WRA-assigned 6-digit filenumber identifier')
@@ -1359,6 +1404,7 @@ MODEL_CLASSES = {
     'wrarecordperson': WraRecordPerson,
     'ireirecord': IreiRecord,
     'ireirecordperson': IreiRecordPerson,
+    'farpage': FarPage,
 }
 
 def dump_csv(output, model_class, ids, search, cols, limit=None, debug=False):
