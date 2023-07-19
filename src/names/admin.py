@@ -39,7 +39,7 @@ class RevisionAdmin(admin.ModelAdmin):
         'diff',
     )
     date_hierarchy = 'timestamp'
-    readonly_fields = ('timestamp','content_object')
+    readonly_fields = ('timestamp','content_object','content_type','username','object_id','note','diff',)
     fieldsets = (
         (None, {'fields': (
             ('timestamp', 'content_object'),
@@ -122,7 +122,7 @@ class FarRecordAdmin(admin.ModelAdmin):
         'camp_address_room', 'reference', 'original_notes',
     )
     autocomplete_fields = ['person',]
-    readonly_fields = ('timestamp',)
+    readonly_fields = ('timestamp','far_record_id','facility','original_order','far_line_id',)
     inlines = (RevisionInline,)
     form = FarRecordAdminForm
     fieldsets = (
@@ -191,7 +191,7 @@ class WraRecordAdmin(admin.ModelAdmin):
         'occupqual1', 'occupqual2', 'occupqual3', 'occuppotn1', 'occuppotn2',
     )
     autocomplete_fields = ['person',]
-    readonly_fields = ('timestamp',)
+    readonly_fields = ('timestamp','wra_record_id','facility',)
     inlines = (RevisionInline,)
     form = WraRecordAdminForm
     fieldsets = (
@@ -260,7 +260,7 @@ class IreiRecordAdmin(admin.ModelAdmin):
         'lastname', 'firstname', 'middlename', 'preferredname', 'birthday',
     )
     autocomplete_fields = ['person',]
-    readonly_fields = ('fetch_ts',)
+    readonly_fields = ('fetch_ts','lastname','firstname','middlename','preferredname','birthday',)
     #form = IreiRecordAdminForm
     fieldsets = (
         (None, {'fields': (
