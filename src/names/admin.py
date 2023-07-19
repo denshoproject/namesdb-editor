@@ -333,7 +333,7 @@ class PersonLocationAdmin(admin.ModelAdmin):
     list_filter = ('facility',)
     #date_hierarchy = 'entry_date'
     search_fields = (
-        'person', 'location', 'facility_address', 'notes',
+        'location', 'facility_address', 'notes',
     )
     autocomplete_fields = ['person','facility',]
     fieldsets = (
