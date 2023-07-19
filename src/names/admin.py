@@ -477,9 +477,15 @@ class PersonAdmin(admin.ModelAdmin):
 
     @admin.display(description="web form/CSV text")
     def rolepeople_text(self, instance):
+        # None can't be concatenated w str
+        family_name = getattr(instance, 'family_name', '')
+        given_name  = getattr(instance, 'given_name', '')
+        middle_name = getattr(instance, 'middle_name', '')
+        namepart = f'{family_name}, {given_name} {middle_name}'.strip()
+        # some parts may be None but we don't want "None" in the name
+        namepart = namepart.replace('None', '').replace('  ', ' ')
         return converters.rolepeople_to_text([{
-            'namepart': (instance.family_name + ", " + instance.given_name + " " + instance.middle_name).strip(),
-            'nr_id': instance.nr_id,
+            'namepart': namepart, 'nr_id': instance.nr_id,
         }]) + ';'
 
     def save_model(self, request, obj, form, change):
