@@ -191,7 +191,7 @@ class WraRecordAdmin(admin.ModelAdmin):
         'occupqual1', 'occupqual2', 'occupqual3', 'occuppotn1', 'occuppotn2',
     )
     autocomplete_fields = ['person',]
-    readonly_fields = ('timestamp','wra_record_id','facility',)
+    readonly_fields = ('timestamp','wra_record_id', 'wra_filenumber','facility',)
     inlines = (RevisionInline,)
     form = WraRecordAdminForm
     fieldsets = (
