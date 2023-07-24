@@ -104,13 +104,13 @@ class FarRecordAdminForm(forms.ModelForm):
 class FarRecordAdmin(admin.ModelAdmin):
     actions = [export_as_csv_action()]
     list_display = (
-        'far_record_id', 'facility', 'family_number', 'last_name', 'first_name',
+        'far_record_id', 'facility', 'far_page', 'family_number', 'last_name', 'first_name',
         'year_of_birth',
     )
     list_display_links = ('far_record_id',)
     list_filter = ('facility', 'sex', 'citizenship')
     search_fields = (
-        'far_record_id', 'facility', 'original_order', 'family_number', 'far_line_id',
+        'far_record_id', 'facility', 'far_page', 'original_order', 'family_number', 'far_line_id',
         'last_name', 'first_name', 'other_names',
         'date_of_birth', 'year_of_birth',
         'sex', 'marital_status', 'citizenship', 'alien_registration_no',
@@ -122,13 +122,13 @@ class FarRecordAdmin(admin.ModelAdmin):
         'camp_address_room', 'reference', 'original_notes',
     )
     autocomplete_fields = ['person',]
-    readonly_fields = ('timestamp','far_record_id','facility','original_order','far_line_id',)
+    readonly_fields = ('timestamp','far_record_id','facility','far_page', 'original_order','far_line_id',)
     inlines = (RevisionInline,)
     form = FarRecordAdminForm
     fieldsets = (
         (None, {'fields': (
             ('person', 'timestamp'),
-            ('far_record_id', 'facility', 'original_order',),
+            ('far_record_id', 'facility', 'far_page', 'original_order',),
             'family_number',
             'far_line_id',
             ('last_name', 'first_name','other_names',),
@@ -380,7 +380,7 @@ class FarRecordInline(admin.TabularInline):
     extra = 0
     show_change_link = True
     fields = (
-        'far_record_id', 'facility', 'original_order',
+        'far_record_id', 'facility', 'far_page', 'original_order',
         'family_number',
         'far_line_id',
         'last_name', 'first_name','other_names',

@@ -644,6 +644,7 @@ python src/manage.py loaddata --database=names ./db/namesdb-kyuzo-YYYYMMDD-HHMM-
 class FarRecord(models.Model):
     far_record_id           = models.CharField(max_length=255, primary_key=1, verbose_name='FAR Record ID', help_text="Derived from FAR ledger id + line id ('original_order')")
     facility                = models.CharField(max_length=255,          verbose_name='Facility', help_text='Identifier of WRA facility')
+    far_page                = models.IntegerField(blank=1, verbose_name='FAR Page', help_text='Page in FAR ledger, recorded in original ledger')
     original_order          = models.CharField(max_length=255, blank=1, verbose_name='Original Order', help_text='Absolute line number in physical FAR ledger')
     family_number           = models.CharField(max_length=255, blank=1, verbose_name='WRA Family Number', help_text='WRA-assigned family number')
     far_line_id             = models.CharField(max_length=255, blank=1, verbose_name='FAR Line Number', help_text='Line number in FAR ledger, recorded in original ledger')
