@@ -644,6 +644,7 @@ python src/manage.py loaddata --database=names ./db/namesdb-kyuzo-YYYYMMDD-HHMM-
 class FarRecord(models.Model):
     far_record_id           = models.CharField(max_length=255, primary_key=1, verbose_name='FAR Record ID', help_text="Derived from FAR ledger id + line id ('original_order')")
     facility                = models.CharField(max_length=255,          verbose_name='Facility', help_text='Identifier of WRA facility')
+    far_page                = models.IntegerField(blank=1, verbose_name='FAR Page', help_text='Page in FAR ledger, recorded in original ledger')
     original_order          = models.CharField(max_length=255, blank=1, verbose_name='Original Order', help_text='Absolute line number in physical FAR ledger')
     family_number           = models.CharField(max_length=255, blank=1, verbose_name='WRA Family Number', help_text='WRA-assigned family number')
     far_line_id             = models.CharField(max_length=255, blank=1, verbose_name='FAR Line Number', help_text='Line number in FAR ledger, recorded in original ledger')
@@ -876,6 +877,51 @@ class FarRecordPerson():
     def save(self, *args, **kwargs):
         """Save FarRecord"""
         super(FarRecord, self).save()
+
+
+class FarPage(models.Model):
+    """
+    CREATE TABLE IF NOT EXISTS "names_farpage" (
+        "facility_id" varchar(30) NOT NULL REFERENCES "names_facility" ("facility_id"),
+        "page" integer NOT NULL,
+        "file_id" varchar(255) NOT NULL,
+        "file_label" varchar(255)
+    );
+    CREATE INDEX "names_farpage_index" ON "names_facility" ("facility_id");
+    """
+    facility = models.ForeignKey(Facility, on_delete=models.DO_NOTHING)
+    page = models.IntegerField(blank=False)
+    file_id = models.CharField(max_length=255, primary_key=True)
+    file_label = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = "FAR Page"
+        unique_together = ('facility', 'file_id')
+
+    def __str__(self):
+        return f'{self.facility} {self.page} {self.file_id}'
+
+    @staticmethod
+    def prep_data():
+        return {
+            'facilities': {
+                f.facility_id: f
+                for f in Facility.objects.all()
+            },
+        }
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
+        o = FarPage()
+        for key,val in rowd.items():
+            if val:
+                if key == 'facility':
+                    val = prepped_data['facilities'][val]
+                setattr(o, key, val)
+        return o,prepped_data
+
+    def save(self, *args, **kwargs):
+        super(FarPage, self).save()
 
 
 class WraRecord(models.Model):
@@ -1359,6 +1405,7 @@ MODEL_CLASSES = {
     'wrarecordperson': WraRecordPerson,
     'ireirecord': IreiRecord,
     'ireirecordperson': IreiRecordPerson,
+    'farpage': FarPage,
 }
 
 def dump_csv(output, model_class, ids, search, cols, limit=None, debug=False):

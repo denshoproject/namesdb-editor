@@ -4,7 +4,7 @@ from django.contrib.contenttypes.admin import GenericTabularInline
 
 from .admin_actions import export_as_csv_action
 from . import converters
-from .models import Facility, FarRecord, WraRecord
+from .models import Facility, FarRecord, FarPage, WraRecord
 from .models import Person, PersonFacility, PersonLocation
 from .models import IreiRecord
 from .models import Revision
@@ -104,13 +104,13 @@ class FarRecordAdminForm(forms.ModelForm):
 class FarRecordAdmin(admin.ModelAdmin):
     actions = [export_as_csv_action()]
     list_display = (
-        'far_record_id', 'facility', 'family_number', 'last_name', 'first_name',
+        'far_record_id', 'facility', 'far_page', 'family_number', 'last_name', 'first_name',
         'year_of_birth',
     )
     list_display_links = ('far_record_id',)
     list_filter = ('facility', 'sex', 'citizenship')
     search_fields = (
-        'far_record_id', 'facility', 'original_order', 'family_number', 'far_line_id',
+        'far_record_id', 'facility', 'far_page', 'original_order', 'family_number', 'far_line_id',
         'last_name', 'first_name', 'other_names',
         'date_of_birth', 'year_of_birth',
         'sex', 'marital_status', 'citizenship', 'alien_registration_no',
@@ -122,13 +122,13 @@ class FarRecordAdmin(admin.ModelAdmin):
         'camp_address_room', 'reference', 'original_notes',
     )
     autocomplete_fields = ['person',]
-    readonly_fields = ('timestamp','far_record_id','facility','original_order','far_line_id',)
+    readonly_fields = ('timestamp','far_record_id','facility','far_page', 'original_order','far_line_id',)
     inlines = (RevisionInline,)
     form = FarRecordAdminForm
     fieldsets = (
         (None, {'fields': (
             ('person', 'timestamp'),
-            ('far_record_id', 'facility', 'original_order',),
+            ('far_record_id', 'facility', 'far_page', 'original_order',),
             'family_number',
             'far_line_id',
             ('last_name', 'first_name','other_names',),
@@ -157,6 +157,32 @@ class FarRecordAdmin(admin.ModelAdmin):
         obj.user = request.user
         obj.note = ''
         super().save_model(request, obj, form, change)
+
+
+class FarPageAdminForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(FarPageAdminForm, self).__init__(*args, **kwargs)
+
+
+@admin.register(FarPage)
+class FarPageAdmin(admin.ModelAdmin):
+    actions = [export_as_csv_action()]
+    list_display = (
+        'facility', 'page', 'file_id', 'file_label',
+    )
+    list_display_links = ('file_id',)
+    list_filter = ('facility',)
+    ordering = ('facility', 'page',)
+    search_fields = (
+        'file_id', 'file_label',
+    )
+    readonly_fields = ('facility', 'page', 'file_id', 'file_label',)
+    form = FarPageAdminForm
+    fieldsets = (
+        (None, {'fields': (
+            'facility', 'page', 'file_id', 'file_label',
+        )}),
+    )
 
 
 class WraRecordAdminForm(forms.ModelForm):
@@ -354,7 +380,7 @@ class FarRecordInline(admin.TabularInline):
     extra = 0
     show_change_link = True
     fields = (
-        'far_record_id', 'facility', 'original_order',
+        'far_record_id', 'facility', 'far_page', 'original_order',
         'family_number',
         'far_line_id',
         'last_name', 'first_name','other_names',
