@@ -19,6 +19,7 @@ from namesdb_public.models import PersonFacility as ESPersonFacility
 from namesdb_public.models import FIELDS_PERSONFACILITY
 from namesdb_public.models import FarRecord as ESFarRecord, FIELDS_FARRECORD
 from namesdb_public.models import WraRecord as ESWraRecord, FIELDS_WRARECORD
+from namesdb_public.models import FarPage as ESFarPage, FIELDS_FARPAGE
 from namesdb_public.models import FIELDS_BY_MODEL
 
 INDEX_PREFIX = 'names'
@@ -28,6 +29,7 @@ ELASTICSEARCH_CLASSES = {
         {'doctype': 'person', 'class': ESPerson},
         {'doctype': 'farrecord', 'class': ESFarRecord},
         {'doctype': 'wrarecord', 'class': ESWraRecord},
+        {'doctype': 'farpage', 'class': ESFarPage},
     ]
 }
 
@@ -35,6 +37,7 @@ ELASTICSEARCH_CLASSES_BY_MODEL = {
     'person': ESPerson,
     'farrecord': ESFarRecord,
     'wrarecord': ESWraRecord,
+    'farpage': ESFarPage,
 }
 
 
@@ -899,7 +902,10 @@ class FarPage(models.Model):
         unique_together = ('facility', 'file_id')
 
     def __str__(self):
-        return f'{self.facility} {self.page} {self.file_id}'
+        return f'{self.facility.facility_id}_{self.page}'
+
+    def es_id(self):
+        return f'{self.facility.facility_id}_{self.page}'
 
     @staticmethod
     def prep_data():
@@ -922,6 +928,32 @@ class FarPage(models.Model):
 
     def save(self, *args, **kwargs):
         super(FarPage, self).save()
+
+    def dict(self, n=None):
+        """JSON-serializable dict
+        """
+        d = {}
+        if n:
+            d['n'] = n
+        for fieldname in FIELDS_FARPAGE:
+            if fieldname == 'far_page_id':
+                value = self.es_id()
+                d[fieldname] = value
+            elif getattr(self, fieldname):
+                value = getattr(self, fieldname)
+                d[fieldname] = value
+        return d
+
+    def post(self, related, ds):
+        """Post FarPage to Elasticsearch
+        """
+        if not self.page:
+            return
+        data = self.dict()
+        es_class = ELASTICSEARCH_CLASSES_BY_MODEL['farpage']
+        return es_class.from_dict(data['far_page_id'], data).save(
+            index=ds.index_name('farpage'), using=ds.es
+        )
 
 
 class WraRecord(models.Model):
