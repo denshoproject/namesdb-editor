@@ -358,8 +358,8 @@ class PersonLocationInline(admin.TabularInline):
     show_change_link = True
     fields = (
         'person',
-        'entry_date', 'exit_date', 'sort_start', 'sort_end',
         'location', 'facility', 'facility_address',
+        'entry_date', 'exit_date', 'sort_start', 'sort_end',
     )
     #autocomplete_fields = ['person',]
 
@@ -382,9 +382,8 @@ class PersonLocationAdminForm(forms.ModelForm):
 class PersonLocationAdmin(admin.ModelAdmin):
     list_display = (
         'person', 'location',
-        #'geo_lat', 'geo_lng',
-        'entry_date', 'exit_date', 'sort_start', 'sort_end',
         'facility', 'facility_address',
+        'entry_date', 'exit_date', 'sort_start', 'sort_end',
     )
     #list_display_links = ('title',)
     list_filter = ('facility',)
@@ -397,10 +396,9 @@ class PersonLocationAdmin(admin.ModelAdmin):
         (None, {'fields': (
             'person',
             'location',
-            ('geo_lat', 'geo_lng'),
+            ('facility', 'facility_address'),
             ('entry_date', 'sort_start'),
             ('exit_date', 'sort_end'),
-            'facility', 'facility_address',
             'notes',
         )}),
     )

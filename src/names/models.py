@@ -699,18 +699,18 @@ description	 Notes	          str	FALSE		      Details of the Person's time at th
 CREATE TABLE IF NOT EXISTS "names_personlocation" (
     "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
     "person_id" varchar(255) NOT NULL REFERENCES "names_person" ("nr_id") DEFERRABLE INITIALLY DEFERRED,
-    "location" varchar(255),
-    "geo_lat" float NULL,
-    "geo_lng" float NULL,
+    "location_id" varchar(30) REFERENCES "names_location" ("id") DEFERRABLE INITIALLY DEFERRED,
+    "facility_id" varchar(30) REFERENCES "names_facility" ("facility_id") DEFERRABLE INITIALLY DEFERRED,
+    "facility_address" varchar(255),
     "entry_date" date NULL,
     "exit_date" date NULL,
     "sort_start" date NULL,
     "sort_end" date NULL,
-    "facility_id" varchar(30) REFERENCES "names_facility" ("facility_id") DEFERRABLE INITIALLY DEFERRED,
-    "facility_address" varchar(255),
     "notes" varchar(255)
 );
-CREATE INDEX "names_personlocation_person_id_293d3cbb" ON "names_personlocation" ("person_id");
+CREATE INDEX "names_personlocation_person_id" ON "names_personlocation" ("person_id");
+CREATE INDEX "names_personlocation_location_id" ON "names_personlocation" ("id");
+CREATE INDEX "names_personlocation_facility_id" ON "names_personlocation" ("facility_id");
 
 # Migrate PersonFacility data using simple brute-force
 from names.models import PersonFacility, PersonLocation
@@ -737,15 +737,13 @@ python src/manage.py loaddata --database=names ./db/namesdb-kyuzo-YYYYMMDD-HHMM-
 
     """
     person      = models.ForeignKey(Person, on_delete=models.DO_NOTHING)
-    location    = models.CharField(max_length=255, blank=0, verbose_name='Location', help_text='Display text of location name')
-    geo_lat     = models.FloatField(blank=1, verbose_name='Latitude',  help_text='Geocoded latitude')
-    geo_lng     = models.FloatField(blank=1, verbose_name='Longitude', help_text='Geocoded longitude')
+    location    = models.ForeignKey(Location, on_delete=models.DO_NOTHING)
+    facility    = models.ForeignKey(Facility, null=1, blank=1, on_delete=models.DO_NOTHING, verbose_name='Facility', help_text='Facility from Densho CV (if applicable)')
+    facility_address = models.CharField(max_length=255, blank=1, verbose_name='Facility Address', help_text='Address inside facility (if applicable)')
     entry_date  = models.DateField(blank=1, verbose_name='From', help_text='Date of arrival')
     exit_date   = models.DateField(blank=1, verbose_name='To',   help_text='Date of departure')
     sort_start  = models.DateField(blank=1, verbose_name='Sort Start', help_text='Date of arrival for sort purposes only. Not for display.')
     sort_end    = models.DateField(blank=1, verbose_name='Sort End',   help_text='Date of departure for sort purposes only. Not for display.')
-    facility    = models.ForeignKey(Facility, null=1, blank=1, on_delete=models.DO_NOTHING, verbose_name='Facility', help_text='Facility from Densho CV (if applicable)')
-    facility_address = models.CharField(max_length=255, blank=1, verbose_name='Facility Address', help_text='Address inside facility (if applicable)')
     notes       = models.TextField(blank=1, verbose_name='Notes', help_text="Details of the Person's time at the location")
 
     class Meta:
