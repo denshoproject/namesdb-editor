@@ -75,12 +75,26 @@ class Facility(models.Model):
     location_label = models.CharField(max_length=255, blank=1, verbose_name='Location Label', help_text='')
     location_lat   = models.FloatField(               blank=1, verbose_name='Latitude',       help_text='')
     location_lng   = models.FloatField(               blank=1, verbose_name='Longitude',      help_text='')
+    tgn_id         = models.CharField(max_length=32,  blank=1, verbose_name='TGN ID', help_text='Thesaurus of Geographic Names (TGN)')
+    # ALTER TABLE names_facility ADD COLUMN tgn_id varchar(32) NULL;
     encyc_title    = models.CharField(max_length=255, blank=1, verbose_name='Encyclopedia title', help_text='')
     encyc_url      = models.URLField(max_length=255,  blank=1, verbose_name='Encyclopedia URL',   help_text='')
 
     class Meta:
         verbose_name = 'Facility'
         verbose_name_plural = 'Facilities'
+
+    def __eq__(self, other):
+        """Enable Pythonic sorting"""
+        self_id = self.facility_id.split('-'); self_id[0] = int(self_id[0])
+        other_id = other.facility_id.split('-'); other_id[0] = int(other_id[0])
+        return self_id == other_id
+
+    def __lt__(self, other):
+        """Enable Pythonic sorting"""
+        self_id = self.facility_id.split('-'); self_id[0] = int(self_id[0])
+        other_id = other.facility_id.split('-'); other_id[0] = int(other_id[0])
+        return self_id < other_id
 
     @staticmethod
     def prep_data():
@@ -124,6 +138,7 @@ class Facility(models.Model):
             'location_label': rowd['location']['label'],
             'location_lat':   rowd['location']['geopoint']['lat'],
             'location_lng':   rowd['location']['geopoint']['lng'],
+            'tgn_id':         rowd['location']['tgn_id'],
             #'encyc_title': rowd['elinks']['label'],
             #'encyc_url':   rowd['elinks']['url'],
         }
@@ -141,6 +156,115 @@ class Facility(models.Model):
     def save(self, *args, **kwargs):
         """Save Facility, ignoring usernames and notes"""
         super(Facility, self).save()
+
+
+FIELDS_LOCATION = [
+    'title',
+    'geo_lat',
+    'geo_lng',
+    'facility',
+    'address',
+    'address_components',
+    'notes',
+]
+
+class Location(models.Model):
+    """
+    CREATE TABLE IF NOT EXISTS "names_location" (
+        "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "geo_lat" float NULL,
+        "geo_lng" float NULL,
+        "facility_id" varchar(30) REFERENCES "names_facility" ("facility_id") DEFERRABLE INITIALLY DEFERRED,
+        "address" varchar(255),
+        "address_components" text,
+        "notes" text
+    );
+    CREATE INDEX "names_location_id" ON "names_location" ("id");
+    CREATE INDEX "names_location_facility_id" ON "names_location" ("facility_id");
+    """
+    geo_lat     = models.FloatField(blank=1,                verbose_name='Latitude',  help_text='Geocoded latitude')
+    geo_lng     = models.FloatField(blank=1,                verbose_name='Longitude', help_text='Geocoded longitude')
+    facility    = models.ForeignKey(Facility, null=1, blank=1, on_delete=models.DO_NOTHING, verbose_name='Facility', help_text='Facility from Densho CV (if applicable)')
+    address     = models.CharField(max_length=255, blank=1, verbose_name='Address',   help_text='')
+    address_components = models.TextField(blank=1,          verbose_name='Address components',  help_text='Using component names from geocodejson-spec.')
+    notes       = models.TextField(blank=1,                 verbose_name='Notes',     help_text='')
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__}(id={self.id}, title={self.address})>'
+
+    def __str__(self):
+        return f'<{self.address} ({self.id})>'
+
+    def __eq__(self, other):
+        """Enable Pythonic sorting"""
+        return self.id == other.id
+
+    def __lt__(self, other):
+        """Enable Pythonic sorting"""
+        return self.id < other.id
+
+    @staticmethod
+    def prep_data():
+        """Prepare data for loading CSV full of Locations
+        """
+        return {
+            'facilities': {
+                f.facility_id:
+                f for f in Facility.objects.all()
+            },
+        }
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
+        """Given a rowd dict from a CSV, return a Location object
+        """
+        print(f"{rowd=}")
+        def normalize_fieldname(rowd, data, fieldname, choices):
+            for field in choices:
+                if rowd.get(field):
+                    data[fieldname] = rowd.get(field)
+        data = {}
+        normalize_fieldname(rowd, data, 'location_id', ['id', 'location', 'location_id'])
+        normalize_fieldname(rowd, data, 'facility_id', ['facility', 'facility_id'])
+        # update or new
+        if data.get('location_id'):
+            try:
+                location = Location.objects.get(
+                    location_id=data['location_id']
+                )
+            except Location.DoesNotExist:
+                location = Location()
+        else:
+            location = Location()
+        try:
+            f = prepped_data['facilities'][data.pop('facility_id')]
+            location.facility = f
+        except KeyError:  # some rows are missing facility_id
+            return None,prepped_data
+        for key,val in rowd.items():
+            if val and not getattr(location, key):
+                setattr(location, key, val)
+        if location.geo_lat:
+            location.geo_lat = float(location.geo_lat)
+        if location.geo_lng:
+            location.geo_lng = float(location.geo_lng)
+        return location,prepped_data
+
+    def save(self, *args, **kwargs):
+        """Save Location, ignoring usernames and notes"""
+        super(Location, self).save()
+
+    def dict(self, n=None):
+        """JSON-serializable dict
+        """
+        d = {}
+        if n:
+            d['n'] = n
+        for fieldname in FIELDS_LOCATION:
+            if getattr(self, fieldname):
+                value = getattr(self, fieldname)
+                d[fieldname] = value
+        return d
 
 
 class Person(models.Model):
@@ -578,18 +702,18 @@ description	 Notes	          str	FALSE		      Details of the Person's time at th
 CREATE TABLE IF NOT EXISTS "names_personlocation" (
     "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
     "person_id" varchar(255) NOT NULL REFERENCES "names_person" ("nr_id") DEFERRABLE INITIALLY DEFERRED,
-    "location" varchar(255),
-    "geo_lat" float NULL,
-    "geo_lng" float NULL,
+    "location_id" varchar(30) REFERENCES "names_location" ("id") DEFERRABLE INITIALLY DEFERRED,
+    "facility_id" varchar(30) REFERENCES "names_facility" ("facility_id") DEFERRABLE INITIALLY DEFERRED,
+    "facility_address" varchar(255),
     "entry_date" date NULL,
     "exit_date" date NULL,
     "sort_start" date NULL,
     "sort_end" date NULL,
-    "facility_id" varchar(30) REFERENCES "names_facility" ("facility_id") DEFERRABLE INITIALLY DEFERRED,
-    "facility_address" varchar(255),
     "notes" varchar(255)
 );
-CREATE INDEX "names_personlocation_person_id_293d3cbb" ON "names_personlocation" ("person_id");
+CREATE INDEX "names_personlocation_person_id" ON "names_personlocation" ("person_id");
+CREATE INDEX "names_personlocation_location_id" ON "names_personlocation" ("id");
+CREATE INDEX "names_personlocation_facility_id" ON "names_personlocation" ("facility_id");
 
 # Migrate PersonFacility data using simple brute-force
 from names.models import PersonFacility, PersonLocation
@@ -616,15 +740,13 @@ python src/manage.py loaddata --database=names ./db/namesdb-kyuzo-YYYYMMDD-HHMM-
 
     """
     person      = models.ForeignKey(Person, on_delete=models.DO_NOTHING)
-    location    = models.CharField(max_length=255, blank=0, verbose_name='Location', help_text='Display text of location name')
-    geo_lat     = models.FloatField(blank=1, verbose_name='Latitude',  help_text='Geocoded latitude')
-    geo_lng     = models.FloatField(blank=1, verbose_name='Longitude', help_text='Geocoded longitude')
+    location    = models.ForeignKey(Location, on_delete=models.DO_NOTHING)
+    facility    = models.ForeignKey(Facility, null=1, blank=1, on_delete=models.DO_NOTHING, verbose_name='Facility', help_text='Facility from Densho CV (if applicable)')
+    facility_address = models.CharField(max_length=255, blank=1, verbose_name='Facility Address', help_text='Address inside facility (if applicable)')
     entry_date  = models.DateField(blank=1, verbose_name='From', help_text='Date of arrival')
     exit_date   = models.DateField(blank=1, verbose_name='To',   help_text='Date of departure')
     sort_start  = models.DateField(blank=1, verbose_name='Sort Start', help_text='Date of arrival for sort purposes only. Not for display.')
     sort_end    = models.DateField(blank=1, verbose_name='Sort End',   help_text='Date of departure for sort purposes only. Not for display.')
-    facility    = models.ForeignKey(Facility, null=1, blank=1, on_delete=models.DO_NOTHING, verbose_name='Facility', help_text='Facility from Densho CV (if applicable)')
-    facility_address = models.CharField(max_length=255, blank=1, verbose_name='Facility Address', help_text='Address inside facility (if applicable)')
     notes       = models.TextField(blank=1, verbose_name='Notes', help_text="Details of the Person's time at the location")
 
     class Meta:
@@ -1429,6 +1551,7 @@ def format_model_fields(fields):
 
 MODEL_CLASSES = {
     'facility': Facility,
+    'location': Location,
     'person': Person,
     'personfacility': PersonFacility,
     'farrecord': FarRecord,

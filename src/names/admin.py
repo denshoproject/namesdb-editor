@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from .admin_actions import export_as_csv_action
 from . import converters
-from .models import Facility, FarRecord, FarPage, WraRecord
+from .models import Facility, Location, FarRecord, FarPage, WraRecord
 from .models import Person, PersonFacility, PersonLocation
 from .models import IreiRecord
 from .models import Revision
@@ -85,7 +85,38 @@ class FacilityAdmin(admin.ModelAdmin):
             'title',
             'location_label',
              ('location_lat', 'location_lng'),
+            'tgn_id',
             #('encyc_title', 'encyc_url'),
+        )}),
+    )
+
+
+@admin.register(Location)
+class LocationAdmin(admin.ModelAdmin):
+    actions = [export_as_csv_action()]
+    list_display = (
+        'geo_lat',
+        'geo_lng',
+        'facility',
+        'address',
+    )
+    list_display_links = ('address',)
+    list_filter = ()
+    search_fields = (
+        'geo_lat',
+        'geo_lng',
+        'facility',
+        'address',
+        'address_components',
+        'notes',
+    )
+    fieldsets = (
+        (None, {'fields': (
+            'address',
+            'address_components',
+            ('geo_lat', 'geo_lng'),
+            'facility',
+            'notes',
         )}),
     )
 
@@ -352,8 +383,8 @@ class PersonLocationInline(admin.TabularInline):
     show_change_link = True
     fields = (
         'person',
-        'entry_date', 'exit_date', 'sort_start', 'sort_end',
         'location', 'facility', 'facility_address',
+        'entry_date', 'exit_date', 'sort_start', 'sort_end',
     )
     #autocomplete_fields = ['person',]
 
@@ -376,9 +407,8 @@ class PersonLocationAdminForm(forms.ModelForm):
 class PersonLocationAdmin(admin.ModelAdmin):
     list_display = (
         'person', 'location',
-        #'geo_lat', 'geo_lng',
-        'entry_date', 'exit_date', 'sort_start', 'sort_end',
         'facility', 'facility_address',
+        'entry_date', 'exit_date', 'sort_start', 'sort_end',
     )
     #list_display_links = ('title',)
     list_filter = ('facility',)
@@ -391,10 +421,9 @@ class PersonLocationAdmin(admin.ModelAdmin):
         (None, {'fields': (
             'person',
             'location',
-            ('geo_lat', 'geo_lng'),
+            ('facility', 'facility_address'),
             ('entry_date', 'sort_start'),
             ('exit_date', 'sort_end'),
-            'facility', 'facility_address',
             'notes',
         )}),
     )
