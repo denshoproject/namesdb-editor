@@ -81,6 +81,18 @@ class Facility(models.Model):
         verbose_name = 'Facility'
         verbose_name_plural = 'Facilities'
 
+    def __eq__(self, other):
+        """Enable Pythonic sorting"""
+        self_id = self.facility_id.split('-'); self_id[0] = int(self_id[0])
+        other_id = other.facility_id.split('-'); other_id[0] = int(other_id[0])
+        return self_id == other_id
+
+    def __lt__(self, other):
+        """Enable Pythonic sorting"""
+        self_id = self.facility_id.split('-'); self_id[0] = int(self_id[0])
+        other_id = other.facility_id.split('-'); other_id[0] = int(other_id[0])
+        return self_id < other_id
+
     @staticmethod
     def prep_data():
         """Prepare data for loading CSV full of Facilities
