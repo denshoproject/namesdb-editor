@@ -72,6 +72,8 @@ class Facility(models.Model):
     location_label = models.CharField(max_length=255, blank=1, verbose_name='Location Label', help_text='')
     location_lat   = models.FloatField(               blank=1, verbose_name='Latitude',       help_text='')
     location_lng   = models.FloatField(               blank=1, verbose_name='Longitude',      help_text='')
+    tgn_id         = models.CharField(max_length=32,  blank=1, verbose_name='TGN ID', help_text='Thesaurus of Geographic Names (TGN)')
+    # ALTER TABLE names_facility ADD COLUMN tgn_id varchar(32) NULL;
     encyc_title    = models.CharField(max_length=255, blank=1, verbose_name='Encyclopedia title', help_text='')
     encyc_url      = models.URLField(max_length=255,  blank=1, verbose_name='Encyclopedia URL',   help_text='')
 
@@ -121,6 +123,7 @@ class Facility(models.Model):
             'location_label': rowd['location']['label'],
             'location_lat':   rowd['location']['geopoint']['lat'],
             'location_lng':   rowd['location']['geopoint']['lng'],
+            'tgn_id':         rowd['location']['tgn_id'],
             #'encyc_title': rowd['elinks']['label'],
             #'encyc_url':   rowd['elinks']['url'],
         }

@@ -84,6 +84,7 @@ class FacilityAdmin(admin.ModelAdmin):
             'title',
             'location_label',
              ('location_lat', 'location_lng'),
+            'tgn_id',
             #('encyc_title', 'encyc_url'),
         )}),
     )
