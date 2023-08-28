@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
+from django.urls import reverse
 
 from .admin_actions import export_as_csv_action
 from . import converters
@@ -152,6 +153,20 @@ class FarRecordAdmin(admin.ModelAdmin):
         )}),
     )
 
+    def get_form(self, request, obj=None, **kwargs):
+        # Add link to far_page field.
+        # Can't do this in FarRecordAdminForm.__init__ bc field is readonly
+        far_page = FarPage.objects.get(facility=obj.facility, page=obj.far_page)
+        url = reverse(
+            f'admin:{far_page._meta.app_label}_{far_page._meta.model_name}_change',
+            args=[far_page.file_id]
+        )
+        help_texts = {
+            'far_page': f'<a href="{url}">Page in FAR ledger</a>, recorded in original ledger'
+        }
+        kwargs.update({'help_texts': help_texts})
+        return super().get_form(request, obj, **kwargs)
+
     def save_model(self, request, obj, form, change):
         # request.user and notes are used by Revision
         obj.user = request.user
@@ -183,6 +198,16 @@ class FarPageAdmin(admin.ModelAdmin):
             'facility', 'page', 'file_id', 'file_label',
         )}),
     )
+
+    def get_form(self, request, obj=None, **kwargs):
+        # Add DDR link to file_id field.
+        # Can't do this in FarPageAdminForm.__init__ bc field is readonly
+        url = f'https://ddr.densho.org/{obj.file_id}/'
+        help_texts = {
+            'file_id': f'<a href="{url}">DDR file page</a>'
+        }
+        kwargs.update({'help_texts': help_texts})
+        return super().get_form(request, obj, **kwargs)
 
 
 class WraRecordAdminForm(forms.ModelForm):
