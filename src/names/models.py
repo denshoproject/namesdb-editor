@@ -143,6 +143,115 @@ class Facility(models.Model):
         super(Facility, self).save()
 
 
+FIELDS_LOCATION = [
+    'title',
+    'geo_lat',
+    'geo_lng',
+    'facility',
+    'address',
+    'address_components',
+    'notes',
+]
+
+class Location(models.Model):
+    """
+    CREATE TABLE IF NOT EXISTS "names_location" (
+        "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "geo_lat" float NULL,
+        "geo_lng" float NULL,
+        "facility_id" varchar(30) REFERENCES "names_facility" ("facility_id") DEFERRABLE INITIALLY DEFERRED,
+        "address" varchar(255),
+        "address_components" text,
+        "notes" text
+    );
+    CREATE INDEX "names_location_id" ON "names_location" ("id");
+    CREATE INDEX "names_location_facility_id" ON "names_location" ("facility_id");
+    """
+    geo_lat     = models.FloatField(blank=1,                verbose_name='Latitude',  help_text='Geocoded latitude')
+    geo_lng     = models.FloatField(blank=1,                verbose_name='Longitude', help_text='Geocoded longitude')
+    facility    = models.ForeignKey(Facility, null=1, blank=1, on_delete=models.DO_NOTHING, verbose_name='Facility', help_text='Facility from Densho CV (if applicable)')
+    address     = models.CharField(max_length=255, blank=1, verbose_name='Address',   help_text='')
+    address_components = models.TextField(blank=1,          verbose_name='Address components',  help_text='Using component names from geocodejson-spec.')
+    notes       = models.TextField(blank=1,                 verbose_name='Notes',     help_text='')
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__}(id={self.id}, title={self.address})>'
+
+    def __str__(self):
+        return f'<{self.address} ({self.id})>'
+
+    def __eq__(self, other):
+        """Enable Pythonic sorting"""
+        return self.id == other.id
+
+    def __lt__(self, other):
+        """Enable Pythonic sorting"""
+        return self.id < other.id
+
+    @staticmethod
+    def prep_data():
+        """Prepare data for loading CSV full of Locations
+        """
+        return {
+            'facilities': {
+                f.facility_id:
+                f for f in Facility.objects.all()
+            },
+        }
+
+    @staticmethod
+    def load_rowd(rowd, prepped_data):
+        """Given a rowd dict from a CSV, return a Location object
+        """
+        print(f"{rowd=}")
+        def normalize_fieldname(rowd, data, fieldname, choices):
+            for field in choices:
+                if rowd.get(field):
+                    data[fieldname] = rowd.get(field)
+        data = {}
+        normalize_fieldname(rowd, data, 'location_id', ['id', 'location', 'location_id'])
+        normalize_fieldname(rowd, data, 'facility_id', ['facility', 'facility_id'])
+        # update or new
+        if data.get('location_id'):
+            try:
+                location = Location.objects.get(
+                    location_id=data['location_id']
+                )
+            except Location.DoesNotExist:
+                location = Location()
+        else:
+            location = Location()
+        try:
+            f = prepped_data['facilities'][data.pop('facility_id')]
+            location.facility = f
+        except KeyError:  # some rows are missing facility_id
+            return None,prepped_data
+        for key,val in rowd.items():
+            if val and not getattr(location, key):
+                setattr(location, key, val)
+        if location.geo_lat:
+            location.geo_lat = float(location.geo_lat)
+        if location.geo_lng:
+            location.geo_lng = float(location.geo_lng)
+        return location,prepped_data
+
+    def save(self, *args, **kwargs):
+        """Save Location, ignoring usernames and notes"""
+        super(Location, self).save()
+
+    def dict(self, n=None):
+        """JSON-serializable dict
+        """
+        d = {}
+        if n:
+            d['n'] = n
+        for fieldname in FIELDS_LOCATION:
+            if getattr(self, fieldname):
+                value = getattr(self, fieldname)
+                d[fieldname] = value
+        return d
+
+
 class Person(models.Model):
     nr_id                         = models.CharField(max_length=255, primary_key=True,      verbose_name='Names Registry ID',         help_text='Names Registry unique identifier')
     family_name                   = models.CharField(max_length=255,                        verbose_name='Last Name',                 help_text='Preferred family or last name')
@@ -1400,6 +1509,7 @@ def format_model_fields(fields):
 
 MODEL_CLASSES = {
     'facility': Facility,
+    'location': Location,
     'person': Person,
     'personfacility': PersonFacility,
     'farrecord': FarRecord,

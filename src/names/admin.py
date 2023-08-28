@@ -4,7 +4,7 @@ from django.contrib.contenttypes.admin import GenericTabularInline
 
 from .admin_actions import export_as_csv_action
 from . import converters
-from .models import Facility, FarRecord, FarPage, WraRecord
+from .models import Facility, Location, FarRecord, FarPage, WraRecord
 from .models import Person, PersonFacility, PersonLocation
 from .models import IreiRecord
 from .models import Revision
@@ -86,6 +86,36 @@ class FacilityAdmin(admin.ModelAdmin):
              ('location_lat', 'location_lng'),
             'tgn_id',
             #('encyc_title', 'encyc_url'),
+        )}),
+    )
+
+
+@admin.register(Location)
+class LocationAdmin(admin.ModelAdmin):
+    actions = [export_as_csv_action()]
+    list_display = (
+        'geo_lat',
+        'geo_lng',
+        'facility',
+        'address',
+    )
+    list_display_links = ('address',)
+    list_filter = ()
+    search_fields = (
+        'geo_lat',
+        'geo_lng',
+        'facility',
+        'address',
+        'address_components',
+        'notes',
+    )
+    fieldsets = (
+        (None, {'fields': (
+            'address',
+            'address_components',
+            ('geo_lat', 'geo_lng'),
+            'facility',
+            'notes',
         )}),
     )
 
