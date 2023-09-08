@@ -360,7 +360,7 @@ class PersonLocationInline(admin.TabularInline):
     fields = (
         'person',
         'location', 'facility', 'facility_address',
-        'entry_date', 'exit_date', 'sort_start', 'sort_end',
+        'entry_date', 'exit_date',
     )
     #autocomplete_fields = ['person',]
 
