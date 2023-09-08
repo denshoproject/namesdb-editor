@@ -95,16 +95,17 @@ class FacilityAdmin(admin.ModelAdmin):
 class LocationAdmin(admin.ModelAdmin):
     actions = [export_as_csv_action()]
     list_display = (
-        'geo_lat',
-        'geo_lng',
-        'facility',
+        'id',
         'address',
+        'lat',
+        'lng',
+        'facility',
     )
-    list_display_links = ('address',)
+    list_display_links = ('id', 'address',)
     list_filter = ()
     search_fields = (
-        'geo_lat',
-        'geo_lng',
+        'lat',
+        'lng',
         'facility',
         'address',
         'address_components',
@@ -114,7 +115,7 @@ class LocationAdmin(admin.ModelAdmin):
         (None, {'fields': (
             'address',
             'address_components',
-            ('geo_lat', 'geo_lng'),
+            ('lat', 'lng'),
             'facility',
             'notes',
         )}),
@@ -384,7 +385,7 @@ class PersonLocationInline(admin.TabularInline):
     fields = (
         'person',
         'location', 'facility', 'facility_address',
-        'entry_date', 'exit_date', 'sort_start', 'sort_end',
+        'entry_date', 'exit_date',
     )
     #autocomplete_fields = ['person',]
 

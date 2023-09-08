@@ -160,8 +160,8 @@ class Facility(models.Model):
 
 FIELDS_LOCATION = [
     'title',
-    'geo_lat',
-    'geo_lng',
+    'lat',
+    'lng',
     'facility',
     'address',
     'address_components',
@@ -172,8 +172,8 @@ class Location(models.Model):
     """
     CREATE TABLE IF NOT EXISTS "names_location" (
         "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-        "geo_lat" float NULL,
-        "geo_lng" float NULL,
+        "lat" float NULL,
+        "lng" float NULL,
         "facility_id" varchar(30) REFERENCES "names_facility" ("facility_id") DEFERRABLE INITIALLY DEFERRED,
         "address" varchar(255),
         "address_components" text,
@@ -182,8 +182,8 @@ class Location(models.Model):
     CREATE INDEX "names_location_id" ON "names_location" ("id");
     CREATE INDEX "names_location_facility_id" ON "names_location" ("facility_id");
     """
-    geo_lat     = models.FloatField(blank=1,                verbose_name='Latitude',  help_text='Geocoded latitude')
-    geo_lng     = models.FloatField(blank=1,                verbose_name='Longitude', help_text='Geocoded longitude')
+    lat         = models.FloatField(blank=1,                verbose_name='Latitude',  help_text='Geocoded latitude')
+    lng         = models.FloatField(blank=1,                verbose_name='Longitude', help_text='Geocoded longitude')
     facility    = models.ForeignKey(Facility, null=1, blank=1, on_delete=models.DO_NOTHING, verbose_name='Facility', help_text='Facility from Densho CV (if applicable)')
     address     = models.CharField(max_length=255, blank=1, verbose_name='Address',   help_text='')
     address_components = models.TextField(blank=1,          verbose_name='Address components',  help_text='Using component names from geocodejson-spec.')
@@ -193,7 +193,7 @@ class Location(models.Model):
         return f'<{self.__class__.__name__}(id={self.id}, title={self.address})>'
 
     def __str__(self):
-        return f'<{self.address} ({self.id})>'
+        return f'<{self.address} ({self.lat}, {self.lng})>'
 
     def __eq__(self, other):
         """Enable Pythonic sorting"""
@@ -244,10 +244,10 @@ class Location(models.Model):
         for key,val in rowd.items():
             if val and not getattr(location, key):
                 setattr(location, key, val)
-        if location.geo_lat:
-            location.geo_lat = float(location.geo_lat)
-        if location.geo_lng:
-            location.geo_lng = float(location.geo_lng)
+        if location.lat:
+            location.lat = float(location.lat)
+        if location.lng:
+            location.lng = float(location.lng)
         return location,prepped_data
 
     def save(self, *args, **kwargs):
@@ -689,8 +689,8 @@ don't use separate Locations table, just store e.g. startdate, edndate, coutnry,
 https://docs.google.com/spreadsheets/d/1Kh1uuCtufA2bJTSF_gyAR83Ai4YmeKiiZcwQM3EhNio/edit?pli=1#gid=843779669
 NAME             LABEL	          TYPE	REQUIRED  REPEATABLE  DESCRIPTION
 location_text	 Location	  str	TRUE		      Display text of location name
-geo_lat	         Latitude	  float	FALSE		      Geocoded latitude
-geo_long	 Longitude	  float	FALSE		      Geocoded longitude
+lat	         Latitude	  float	FALSE		      Geocoded latitude
+lng     	 Longitude	  float	FALSE		      Geocoded longitude
 entry_date	 From	          date	FALSE		      Date of arrival
 exit_date	 To	          date	FALSE		      Date of departure
 sort_date_start	 Sort Order Start date	FALSE		      Date of arrival for sort purposes only. Not for display.
@@ -752,6 +752,9 @@ python src/manage.py loaddata --database=names ./db/namesdb-kyuzo-YYYYMMDD-HHMM-
     class Meta:
         verbose_name = 'Person-Location'
         verbose_name_plural = 'Person-Locations'
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__} {self.person_id} {self.location} {self.sort_start} {self.sort_end}>'
 
     def dict(self, n=None):
         """JSON-serializable dict
