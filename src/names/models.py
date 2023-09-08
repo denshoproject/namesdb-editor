@@ -750,6 +750,9 @@ python src/manage.py loaddata --database=names ./db/namesdb-kyuzo-YYYYMMDD-HHMM-
         verbose_name = 'Person-Location'
         verbose_name_plural = 'Person-Locations'
 
+    def __repr__(self):
+        return f'<{self.__class__.__name__} {self.person_id} {self.location} {self.sort_start} {self.sort_end}>'
+
     def dict(self, n=None):
         """JSON-serializable dict
         """
