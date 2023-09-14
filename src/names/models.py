@@ -86,15 +86,19 @@ class Facility(models.Model):
 
     def __eq__(self, other):
         """Enable Pythonic sorting"""
-        self_id = self.facility_id.split('-'); self_id[0] = int(self_id[0])
-        other_id = other.facility_id.split('-'); other_id[0] = int(other_id[0])
-        return self_id == other_id
+        if other and isinstance(other, Facility):
+            self_id = self.facility_id.split('-'); self_id[0] = int(self_id[0])
+            other_id = other.facility_id.split('-'); other_id[0] = int(other_id[0])
+            return self_id == other_id
+        return False
 
     def __lt__(self, other):
         """Enable Pythonic sorting"""
-        self_id = self.facility_id.split('-'); self_id[0] = int(self_id[0])
-        other_id = other.facility_id.split('-'); other_id[0] = int(other_id[0])
-        return self_id < other_id
+        if other and isinstance(other, Facility):
+            self_id = self.facility_id.split('-'); self_id[0] = int(self_id[0])
+            other_id = other.facility_id.split('-'); other_id[0] = int(other_id[0])
+            return self_id < other_id
+        return False
 
     @staticmethod
     def prep_data():
@@ -197,11 +201,15 @@ class Location(models.Model):
 
     def __eq__(self, other):
         """Enable Pythonic sorting"""
-        return self.id == other.id
+        if other and isinstance(other, Location):
+            return self.id == other.id
+        return False
 
     def __lt__(self, other):
         """Enable Pythonic sorting"""
-        return self.id < other.id
+        if other and isinstance(other, Location):
+            return self.id < other.id
+        return False
 
     @staticmethod
     def prep_data():
