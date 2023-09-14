@@ -106,7 +106,6 @@ class LocationAdmin(admin.ModelAdmin):
     search_fields = (
         'lat',
         'lng',
-        'facility',
         'address',
         'address_components',
         'notes',
@@ -415,7 +414,8 @@ class PersonLocationAdmin(admin.ModelAdmin):
     list_filter = ('facility',)
     #date_hierarchy = 'entry_date'
     search_fields = (
-        'location', 'facility_address', 'notes',
+        'facility_address',
+        'notes',
     )
     autocomplete_fields = ['person','facility',]
     fieldsets = (
