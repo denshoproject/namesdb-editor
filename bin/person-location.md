@@ -84,16 +84,30 @@ with open('/tmp/namesdb-far-addresses-2.csv', 'w', newline='') as csvfile:
 
 ## Back up current data
 
+``` bash
+# supervisorctl stop namesdbeditor
+# su ddr
+$ cd /opt/namesdb-editor/db
+$ cp namesregistry.db namesregistry.db.kyuzo.20230908-1651
+$ cp django.db django.db.kyuzo.20230908-1651
+$ tar czf django.db.kyuzo.20230908-1651.tgz django.db.kyuzo.20230908-1651
+$ tar czf namesregistry.db.kyuzo.20230908-1651.tgz namesregistry.db.kyuzo.20230908-1651
+$ mv *.tgz backups/
+```
 
-## Update `namesdb-editor`
+## TODO Update `namesdb-editor`
 
 ``` bash
-cd /opt/namesdb-editor
+cd /opt/densho-vocab
 git pull
+cd /opt/namesdb-editor
+git checkout develop
+git pull
+make install
 ```
 
 
-## Add Facility.tgn field
+## TODO Add Facility.tgn field
 
 ``` sql
 ALTER TABLE names_facility ADD COLUMN tgn_id varchar(32) NULL;
@@ -206,7 +220,7 @@ CREATE INDEX "names_personlocation_location_id" ON "names_personlocation" ("id")
 CREATE INDEX "names_personlocation_facility_id" ON "names_personlocation" ("facility_id");
 ```
 
-Make PersonLocation records from FarRecords `pre_exclusion_*`, `facility`, and `departure_*` fields.
+TODO Make PersonLocation records from FarRecords `pre_exclusion_*`, `facility`, and `departure_*` fields.
 
 ``` python
 from datetime import date
@@ -302,9 +316,21 @@ for n,farrecord in enumerate(farrecords):
     except KeyError:
         result = None
     if result:
-        personlocations += [item for item in result if item]
+        for item in result:
+            if item:
+                personlocations.append(item)
+            else:
+                errors.append(farrecord)
     else:
         errors.append(farrecord)
+
+# write FarRecord IDs for errors
+with open('db/personlocation-error-fars.csv', 'w') as f:
+    f.write(
+        '\n'.join([
+            far.far_record_id for far in errors
+        ])
+    )
 
 from itertools import zip_longest
 def grouper(iterable, n, fillvalue=None):
@@ -321,6 +347,49 @@ for plgroup in grouper(personlocations, n=group_size):
     )
     total_saved += group_size
     print(f"{total_saved}/{total}")
-
-print(f"{len(personlocations)} saved")
 ```
+
+
+## Fix JSON
+
+Find any `Locations` where `address_components` includes a single-quote, and fix these manually:
+``` python
+import json
+from names import models
+for l in models.Location.objects.all():
+    if l.address_components == '':
+        continue
+    if l.address_components.count("'") % 2:
+        l,l.address_components
+```
+
+Then run this script to convert all single-quotes in `address_components` to double-quotes:
+``` python
+import json
+from names import models
+for l in models.Location.objects.all():
+    if l.address_components == '':
+        continue
+    try:
+        data = json.loads(l.address_components)
+        l.address_components
+    except json.decoder.JSONDecodeError:
+        f'UPDATING {l.address_components}'
+        l.address_components = l.address_components.replace("'", '"')
+        l.save()
+```
+
+And then run this to see if any non-parseable JSON is left:
+``` python
+import json
+from names import models
+for l in models.Location.objects.all():
+    if l.address_components == '':
+        continue
+    try:
+        data = json.loads(l.address_components)
+    except json.decoder.JSONDecodeError:
+        f'ERROR {l} {l.address_components}'
+```
+
+There may be `Locations` with a single-quote in the city name e.g. "O'Brien".
