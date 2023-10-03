@@ -1,10 +1,11 @@
 from django import forms
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
+from django.urls import reverse
 
 from .admin_actions import export_as_csv_action
 from . import converters
-from .models import Facility, FarRecord, FarPage, WraRecord
+from .models import Facility, Location, FarRecord, FarPage, WraRecord
 from .models import Person, PersonFacility, PersonLocation
 from .models import IreiRecord
 from .models import Revision
@@ -84,7 +85,38 @@ class FacilityAdmin(admin.ModelAdmin):
             'title',
             'location_label',
              ('location_lat', 'location_lng'),
+            'tgn_id',
             #('encyc_title', 'encyc_url'),
+        )}),
+    )
+
+
+@admin.register(Location)
+class LocationAdmin(admin.ModelAdmin):
+    actions = [export_as_csv_action()]
+    list_display = (
+        'id',
+        'address',
+        'lat',
+        'lng',
+        'facility',
+    )
+    list_display_links = ('id', 'address',)
+    list_filter = ()
+    search_fields = (
+        'lat',
+        'lng',
+        'address',
+        'address_components',
+        'notes',
+    )
+    fieldsets = (
+        (None, {'fields': (
+            'address',
+            'address_components',
+            ('lat', 'lng'),
+            'facility',
+            'notes',
         )}),
     )
 
@@ -152,6 +184,20 @@ class FarRecordAdmin(admin.ModelAdmin):
         )}),
     )
 
+    def get_form(self, request, obj=None, **kwargs):
+        # Add link to far_page field.
+        # Can't do this in FarRecordAdminForm.__init__ bc field is readonly
+        far_page = FarPage.objects.get(facility=obj.facility, page=obj.far_page)
+        url = reverse(
+            f'admin:{far_page._meta.app_label}_{far_page._meta.model_name}_change',
+            args=[far_page.file_id]
+        )
+        help_texts = {
+            'far_page': f'<a href="{url}">Page in FAR ledger</a>, recorded in original ledger'
+        }
+        kwargs.update({'help_texts': help_texts})
+        return super().get_form(request, obj, **kwargs)
+
     def save_model(self, request, obj, form, change):
         # request.user and notes are used by Revision
         obj.user = request.user
@@ -183,6 +229,16 @@ class FarPageAdmin(admin.ModelAdmin):
             'facility', 'page', 'file_id', 'file_label',
         )}),
     )
+
+    def get_form(self, request, obj=None, **kwargs):
+        # Add DDR link to file_id field.
+        # Can't do this in FarPageAdminForm.__init__ bc field is readonly
+        url = f'https://ddr.densho.org/{obj.file_id}/'
+        help_texts = {
+            'file_id': f'<a href="{url}">DDR file page</a>'
+        }
+        kwargs.update({'help_texts': help_texts})
+        return super().get_form(request, obj, **kwargs)
 
 
 class WraRecordAdminForm(forms.ModelForm):
@@ -327,8 +383,8 @@ class PersonLocationInline(admin.TabularInline):
     show_change_link = True
     fields = (
         'person',
-        'entry_date', 'exit_date', 'sort_start', 'sort_end',
         'location', 'facility', 'facility_address',
+        'entry_date', 'exit_date',
     )
     #autocomplete_fields = ['person',]
 
@@ -351,25 +407,24 @@ class PersonLocationAdminForm(forms.ModelForm):
 class PersonLocationAdmin(admin.ModelAdmin):
     list_display = (
         'person', 'location',
-        #'geo_lat', 'geo_lng',
-        'entry_date', 'exit_date', 'sort_start', 'sort_end',
         'facility', 'facility_address',
+        'entry_date', 'exit_date', 'sort_start', 'sort_end',
     )
     #list_display_links = ('title',)
     list_filter = ('facility',)
     #date_hierarchy = 'entry_date'
     search_fields = (
-        'location', 'facility_address', 'notes',
+        'facility_address',
+        'notes',
     )
     autocomplete_fields = ['person','facility',]
     fieldsets = (
         (None, {'fields': (
             'person',
             'location',
-            ('geo_lat', 'geo_lng'),
+            ('facility', 'facility_address'),
             ('entry_date', 'sort_start'),
             ('exit_date', 'sort_end'),
-            'facility', 'facility_address',
             'notes',
         )}),
     )

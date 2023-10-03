@@ -438,7 +438,7 @@ def status(hosts):
 def post(hosts, limit, debug, model):
     """Post data from SQL database to Elasticsearch.
     """
-    MODELS = ['person', 'farrecord', 'far', 'wrarecord', 'wra']
+    MODELS = ['person', 'farrecord', 'far', 'wrarecord', 'wra', 'farpage']
     if model not in MODELS:
         click.echo(f'Sorry, model has to be one of {MODELS}')
         sys.exit(1)
