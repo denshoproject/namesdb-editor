@@ -6,7 +6,7 @@ from django.urls import reverse
 from .admin_actions import export_as_csv_action
 from . import converters
 from .models import Facility, Location, FarRecord, FarPage, WraRecord
-from .models import Person, PersonFacility, PersonLocation
+from .models import Person, PersonLocation
 from .models import IreiRecord
 from .models import Revision
 
@@ -365,17 +365,6 @@ class IreiRecordAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-class PersonFacilityInline(admin.TabularInline):
-    model = PersonFacility
-    extra = 0
-    show_change_link = True
-    autocomplete_fields = ['facility',]
-
-    def has_add_permission(self, request, obj): return True
-    def has_change_permission(self, request, obj): return True
-    def has_delete_permission(self, request, obj): return True
-
-
 class PersonLocationInline(admin.TabularInline):
     model = PersonLocation
     ordering = ('sort_start',)
@@ -526,7 +515,6 @@ class PersonAdmin(admin.ModelAdmin):
     )
     inlines = [
         PersonLocationInline,
-        PersonFacilityInline,
         FarRecordInline, WraRecordInline, RevisionInline,
         IreiRecordInline,
     ]
