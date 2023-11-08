@@ -572,7 +572,7 @@ class Person(models.Model):
                 if related['wra_records'].get(self.nr_id):
                     value = related['wra_records'][self.nr_id]
             else:
-                if getattr(self, fieldname):
+                if hasattr(self, fieldname):
                     value = getattr(self, fieldname)
             d[fieldname] = value
         d['family'] = []
