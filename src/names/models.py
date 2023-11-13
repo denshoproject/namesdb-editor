@@ -956,7 +956,8 @@ class FarRecord(models.Model):
                         'name': person['preferred_name'],
                     }
             else:
-                value = str(getattr(self, fieldname, ''))
+                if hasattr(self, fieldname):
+                    value = str(getattr(self, fieldname, ''))
             d[fieldname] = value
         d['family'] = []
         if self.family_number and related['family'].get(self.family_number):
