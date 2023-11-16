@@ -438,7 +438,10 @@ def status(hosts):
 def post(hosts, limit, debug, model):
     """Post data from SQL database to Elasticsearch.
     """
-    MODELS = ['person', 'farrecord', 'far', 'wrarecord', 'wra', 'farpage']
+    MODELS = [
+        'person', 'farrecord', 'far', 'wrarecord', 'wra', 'farpage',
+        'personlocation', 'location',
+    ]
     if model not in MODELS:
         click.echo(f'Sorry, model has to be one of {MODELS}')
         sys.exit(1)
@@ -462,6 +465,9 @@ def post(hosts, limit, debug, model):
     elif model in ['wrarecord', 'wra']:
         related['persons'] = models.WraRecord.related_persons()
         related['family'] = models.WraRecord.related_family()
+    elif model == 'personlocation':
+        related['persons'] = models.PersonLocation.related_persons()
+        related['locations'] = models.PersonLocation.related_locations()
     
     click.echo('Loading from database')
     sql_class = models.MODEL_CLASSES[model]
