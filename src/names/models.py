@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 import difflib
 import json
 
@@ -16,6 +16,7 @@ from django.utils import timezone
 from names import csvfile,fileio,noidminter
 from namesdb_public.models import Person as ESPerson, FIELDS_PERSON
 from namesdb_public.models import PersonFacility as ESPersonFacility
+from namesdb_public.models import PersonLocation as ESPersonLocation
 from namesdb_public.models import FIELDS_PERSONFACILITY
 from namesdb_public.models import FarRecord as ESFarRecord, FIELDS_FARRECORD
 from namesdb_public.models import WraRecord as ESWraRecord, FIELDS_WRARECORD
@@ -30,6 +31,7 @@ ELASTICSEARCH_CLASSES = {
         {'doctype': 'farrecord', 'class': ESFarRecord},
         {'doctype': 'wrarecord', 'class': ESWraRecord},
         {'doctype': 'farpage', 'class': ESFarPage},
+        {'doctype': 'personlocation', 'class': ESPersonLocation},
     ]
 }
 
@@ -38,6 +40,7 @@ ELASTICSEARCH_CLASSES_BY_MODEL = {
     'farrecord': ESFarRecord,
     'wrarecord': ESWraRecord,
     'farpage': ESFarPage,
+    'personlocation': ESPersonLocation,
 }
 
 
@@ -677,6 +680,18 @@ class PersonFacility(models.Model):
         return d
 
 
+FIELDS_PERSONLOCATION = [
+    'person',
+    'location',
+    'facility',
+    'facility_address',
+    'entry_date',
+    'exit_date',
+    'sort_start',
+    'sort_end',
+    'notes',
+]
+
 class PersonLocation(models.Model):
     """
 TODO (namesdb) like PersonLocation, more general than PersonFacility
@@ -764,17 +779,70 @@ python src/manage.py loaddata --database=names ./db/namesdb-kyuzo-YYYYMMDD-HHMM-
     def __repr__(self):
         return f'<{self.__class__.__name__} {self.person_id} {self.location} {self.sort_start} {self.sort_end}>'
 
-    def dict(self, n=None):
+    def related_persons():
+        """dict of Person info by nr_id
+        """
+        return {
+            person.nr_id: {
+                'nr_id': person.nr_id,
+                'preferred_name': person.preferred_name,
+            }
+            for person in Person.objects.all()
+        }
+
+    def related_locations():
+        """dict of Person info by id
+        """
+        return {
+            str(location.id): {
+                'lat': location.lat,
+                'lng': location.lng,
+                'address': location.address,
+                'address_components': location.address_components,
+                'facility_id': location.facility_id,
+            }
+            for location in Location.objects.all()
+        }
+
+    def dict(self, related):
         """JSON-serializable dict
         """
-        d = {}
-        if n:
-            d['n'] = n
-        for fieldname in FIELDS_PERSONLOCATION:
-            if getattr(self, fieldname):
-                value = getattr(self, fieldname)
-                d[fieldname] = value
-        return d
+        # get person,location values from related instead of database
+        person = related['persons'][self.person_id]
+        location = related['locations'][self.location_id]
+        return {
+            'id': PersonLocation._make_id(
+                self.person_id, self.location_id, self.entry_date
+            ),
+            'person_id': self.person_id,
+            'person_name': person['preferred_name'],
+            'location_id': self.location_id,
+            'lat': location['lat'],
+            'lng': location['lng'],
+            'address': location['address'],
+            'address_components': location['address_components'],
+            'facility_id': location['facility_id'],
+            'entry_date': self.entry_date,
+            'exit_date': self.exit_date,
+        }
+
+    @staticmethod
+    def _make_id(person_id, location_id, entry_date=''):
+        if entry_date:
+            if isinstance(entry_date, date):
+                entry_date = entry_date.strftime('%Y%m%d')
+        else:
+            entry_date=''
+        return '_'.join([person_id, str(location_id), entry_date])
+
+    def post(self, related, ds):
+        """Post FarRecord to Elasticsearch
+        """
+        data = self.dict(related)
+        es_class = ELASTICSEARCH_CLASSES_BY_MODEL['personlocation']
+        return es_class.from_dict(data['id'], data).save(
+            index=ds.index_name('personlocation'), using=ds.es
+        )
 
 
 class FarRecord(models.Model):
@@ -1566,6 +1634,7 @@ MODEL_CLASSES = {
     'location': Location,
     'person': Person,
     'personfacility': PersonFacility,
+    'personlocation': PersonLocation,
     'farrecord': FarRecord,
     'wrarecord': WraRecord,
     'farrecordperson': FarRecordPerson,
