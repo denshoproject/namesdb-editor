@@ -502,6 +502,8 @@ def get(hosts, json, model, record_id):
     """
     model = model_w_abbreviations(model)
     if json:
+        # the slash in Person.nr_id is unsafe in URLs
+        record_id = record_id.replace('/', '%2F')
         url = _make_record_url(hosts, model, record_id)
         if settings.DOCSTORE_PASSWORD:
             r = requests.get(
