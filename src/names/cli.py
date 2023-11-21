@@ -481,7 +481,7 @@ def post(hosts, limit, debug, model):
         record.post(related, ds)
 
 def _make_record_url(hosts, model, record_id):
-    return f'http://{hosts}/{models_public.PREFIX}{model}/_doc/{record_id}'
+    return f'http://{hosts}/{models.INDEX_PREFIX}{model}/_doc/{record_id}'
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
@@ -502,8 +502,15 @@ def get(hosts, json, model, record_id):
     """
     model = model_w_abbreviations(model)
     if json:
+        # the slash in Person.nr_id is unsafe in URLs
+        record_id = record_id.replace('/', '%2F')
         url = _make_record_url(hosts, model, record_id)
-        r = requests.get(url)
+        if settings.DOCSTORE_PASSWORD:
+            r = requests.get(
+                url, auth=(settings.DOCSTORE_USERNAME, settings.DOCSTORE_PASSWORD)
+            )
+        else:
+            r = requests.get(url)
         if r.status_code == 200:
             click.echo(r.text)
         else:
