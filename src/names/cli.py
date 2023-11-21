@@ -503,7 +503,12 @@ def get(hosts, json, model, record_id):
     model = model_w_abbreviations(model)
     if json:
         url = _make_record_url(hosts, model, record_id)
-        r = requests.get(url)
+        if settings.DOCSTORE_PASSWORD:
+            r = requests.get(
+                url, auth=(settings.DOCSTORE_USERNAME, settings.DOCSTORE_PASSWORD)
+            )
+        else:
+            r = requests.get(url)
         if r.status_code == 200:
             click.echo(r.text)
         else:
