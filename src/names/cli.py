@@ -481,7 +481,7 @@ def post(hosts, limit, debug, model):
         record.post(related, ds)
 
 def _make_record_url(hosts, model, record_id):
-    return f'http://{hosts}/{models_public.PREFIX}{model}/_doc/{record_id}'
+    return f'http://{hosts}/{models.INDEX_PREFIX}{model}/_doc/{record_id}'
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
