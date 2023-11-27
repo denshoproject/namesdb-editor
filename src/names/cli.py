@@ -430,12 +430,35 @@ def status(hosts):
     for i in index_names:
         print('- %s' % i)
 
+
+TEST_DATA = {
+    'person': [
+        '88922/nr0097z44',  # Abe Tamotsu
+        '88922/ddr000002f', # Sameshima Sadako
+        '88922/nr003ck36',  # Ikeda Kanjiro
+        '88922/nr007bb08',  # Sumida Chimata
+    ],
+    'farrecord': [
+        'minidoka2-1', 'tulelake1-91',       # Abe Tamotsu
+        'manzanar1-7910', 'manzanar1-11458', # Sameshima Sadako
+        'granada1-1876',  # Ikeda Kanjiro
+        'rohwer1-9215',   # Sumida Chimata
+    ],
+    'wrarecord': [
+        '303',  # Abe Tamotsu
+        # Sameshima Sadako
+        '20182',  # Ikeda Kanjiro
+        '82360',  # Sumida Chimata
+    ],
+}
+
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
 @click.option('--limit','-l', default=None, help='Limit number of records.')
+@click.option('--test','-T', is_flag=True, default=False, help='Post test data.')
 @click.option('--debug','-d', is_flag=True, default=False)
 @click.argument('model')
-def post(hosts, limit, debug, model):
+def post(hosts, limit, test, debug, model):
     """Post data from SQL database to Elasticsearch.
     """
     MODELS = [
@@ -471,7 +494,23 @@ def post(hosts, limit, debug, model):
     
     click.echo('Loading from database')
     sql_class = models.MODEL_CLASSES[model]
-    if limit:
+    # TODO stretching this metaphor too far - revise
+    if test:
+        if model == 'person':
+            records = sql_class.objects.filter(nr_id__in=TEST_DATA['person'])
+        elif model == 'personlocation':
+            records = sql_class.objects.filter(person_id__in=TEST_DATA['person'])
+        elif model == 'farrecord':
+            records = sql_class.objects.filter(
+                far_record_id__in=TEST_DATA['farrecord']
+            )
+        elif model == 'wrarecord':
+            records = sql_class.objects.filter(
+                wra_record_id__in=TEST_DATA['wrarecord']
+            )
+        else:
+            print(f"ERR test in {TEST_DATA.keys()}"); sys.exit(1)
+    elif limit:
         records = sql_class.objects.all()[:limit]
     else:
         records = sql_class.objects.all()
