@@ -77,6 +77,12 @@ if not (NOIDMINTER_USERNAME and NOIDMINTER_PASSWORD):
     raise Exception('Set ddr-idservice username and/or password in settings.')
 NOIDMINTER_BATCH_SIZE = config.get('noidminter', 'batch_size')
 
+DDR_API_URL = config.get('ddrpublic', 'ddr_api_url')
+DDR_API_TIMEOUT = config.get('ddrpublic', 'ddr_api_timeout')
+DDR_API_USERNAME = config.get('ddrpublic', 'ddr_api_username')
+DDR_API_PASSWORD = config.get('ddrpublic', 'ddr_api_password')
+
+
 # ----------------------------------------------------------------------
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
