@@ -118,6 +118,16 @@ INSTALLED_APPS = [
     'namesdb_public',
 ]
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        # BasicAuthentication breaks the API when behind HTTP Basic auth
+        # (i.e. in dev.stage), causing it to require login for all views.
+        #'rest_framework.authentication.BasicAuthentication',
+        # Password is still required for Django admin.
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+}
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
