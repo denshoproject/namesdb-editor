@@ -491,6 +491,7 @@ def post(hosts, limit, test, debug, model):
     elif model == 'personlocation':
         related['persons'] = models.PersonLocation.related_persons()
         related['locations'] = models.PersonLocation.related_locations()
+        related['facilities'] = models.PersonLocation.related_facilities()
     
     click.echo('Loading from database')
     sql_class = models.MODEL_CLASSES[model]

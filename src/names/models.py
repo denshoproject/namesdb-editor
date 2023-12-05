@@ -71,6 +71,18 @@ class NamesRouter:
         return None
 
 
+FIELDS_FACILITY = [
+    'facility_id',
+    'facility_type',
+    'title',
+    'location_label',
+    'location_lat',
+    'location_lng',
+    'tgn_id',
+    'encyc_title',
+    'encyc_url',
+]
+
 class Facility(models.Model):
     facility_id   = models.CharField(max_length=30, primary_key=True, verbose_name='Facility ID',   help_text='ID of facility where detained')
     facility_type = models.CharField(max_length=255,  blank=0, verbose_name='Facility Type', help_text='Type of facility where detained')
@@ -804,13 +816,25 @@ python src/manage.py loaddata --database=names ./db/namesdb-kyuzo-YYYYMMDD-HHMM-
             for location in Location.objects.all()
         }
 
+    def related_facilities():
+        """dict of Facility info by id
+        """
+        return {
+            facility.facility_id: {
+                fieldname: getattr(facility, fieldname, None)
+                for fieldname in FIELDS_FACILITY
+            }
+            for facility in Facility.objects.all()
+        }
+
     def dict(self, related):
         """JSON-serializable dict
         """
         # get person,location values from related instead of database
         person = related['persons'][self.person_id]
         location = related['locations'][self.location_id]
-        return {
+        facility = related['facilities'].get(self.facility_id, {})
+        data = {
             'id': PersonLocation._make_id(
                 self.person_id, self.location_id, self.entry_date
             ),
@@ -822,9 +846,13 @@ python src/manage.py loaddata --database=names ./db/namesdb-kyuzo-YYYYMMDD-HHMM-
             'address': location['address'],
             'address_components': location['address_components'],
             'facility_id': location['facility_id'],
+            'facility_name': None,
             'entry_date': self.entry_date,
             'exit_date': self.exit_date,
         }
+        if facility:
+            data['facility_name'] = facility['title']
+        return data
 
     @staticmethod
     def _make_id(person_id, location_id, entry_date=''):
