@@ -69,7 +69,10 @@ STATIC_ROOT = config.get('media', 'static_root')
 STATIC_URL = config.get('media', 'static_url')
 
 NOIDMINTER_HOST = config.get('noidminter', 'idservice_host')
-NOIDMINTER_TEMPLATE = config.get('noidminter', 'noid_template')
+# See ddr-idservice/idservice/noidminter/pynoid.py
+# or https://metacpan.org/dist/Noid/view/noid#TEMPLATES
+# template format.
+NOIDMINTER_TEMPLATE = 'nr.zeedeedk'
 NOIDMINTER_URL = f'http://{NOIDMINTER_HOST}/noid/api/1.0/{NOIDMINTER_TEMPLATE}/'
 NOIDMINTER_USERNAME = config.get('noidminter', 'idservice_username')
 NOIDMINTER_PASSWORD = config.get('noidminter', 'idservice_password')
