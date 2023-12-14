@@ -132,10 +132,14 @@ REST_FRAMEWORK = {
     ],
 }
 
+NAMESDB_PUBLIC_BASE_DIR = Path('/opt/namesdb-public/namessite/templates')
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [
+            BASE_DIR / 'templates',
+            NAMESDB_PUBLIC_BASE_DIR,
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
