@@ -37,6 +37,7 @@ Note: You can set environment variables for HOSTS and INDEX.:
 """
 
 from datetime import datetime
+from http import HTTPStatus
 import json
 from pathlib import Path
 import os
@@ -551,7 +552,7 @@ def get(hosts, json, model, record_id):
             )
         else:
             r = requests.get(url)
-        if r.status_code == 200:
+        if r.status_code == HTTPStatus.OK:
             click.echo(r.text)
         else:
             click.echo(f'{r.status_code} {r.reason}')
