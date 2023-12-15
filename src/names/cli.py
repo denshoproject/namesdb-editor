@@ -52,7 +52,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'editor.settings')
 import django
 django.setup()
 from django.conf import settings
-import requests
+import httpx
 from tqdm import tqdm
 
 from . import batch
@@ -547,11 +547,11 @@ def get(hosts, json, model, record_id):
         record_id = record_id.replace('/', '%2F')
         url = _make_record_url(hosts, model, record_id)
         if settings.DOCSTORE_PASSWORD:
-            r = requests.get(
+            r = httpx.get(
                 url, auth=(settings.DOCSTORE_USERNAME, settings.DOCSTORE_PASSWORD)
             )
         else:
-            r = requests.get(url)
+            r = httpx.get(url)
         if r.status_code == HTTPStatus.OK:
             click.echo(r.text)
         else:

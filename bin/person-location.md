@@ -32,11 +32,11 @@ addresses_sorted = sorted(list(set(far_pre_evacuation + far_departure)))
 # Flip the (state,city) tuples back to "city, state" strings
 addresses = [f"{address}, {state}" for state,address in addresses_sorted]
 
-import requests
+import httpx
 def geocodio_batch_address(API_KEY, addresses=[]):
     """Geocode a whole list of addresses at once."""
     url = f'https://api.geocod.io/v1.7/geocode?api_key={API_KEY}'
-    response = requests.post(url, json=addresses)
+    response = httpx.post(url, json=addresses)
     data = response.json()
     try:
         results = data['results']

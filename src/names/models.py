@@ -3,7 +3,7 @@ import difflib
 import json
 
 from dateutil import parser
-from requests.exceptions import ConnectionError
+from httpx import RequestError
 from tabulate import tabulate
 
 from django.conf import settings
@@ -464,9 +464,9 @@ class Person(models.Model):
         """
         try:
             return noidminter.get_noids()[0]
-        except ConnectionError:
+        except RequestError as err:
             raise Exception(
-                f'Could not connect to ddr-idservice at {settings.NOIDMINTER_URL}.' \
+                f'Could not connect to ddr-idservice at {err.request.url}.' \
                 ' Please check settings.'
             )
 
