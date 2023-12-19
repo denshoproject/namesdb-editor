@@ -464,7 +464,7 @@ def post(hosts, limit, test, debug, model):
     """
     MODELS = [
         'person', 'farrecord', 'far', 'wrarecord', 'wra', 'farpage',
-        'personlocation', 'location',
+        'personlocation', 'facility', 'location',
     ]
     if model not in MODELS:
         click.echo(f'Sorry, model has to be one of {MODELS}')

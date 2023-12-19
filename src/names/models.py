@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from names import csvfile,fileio,noidminter
 from namesdb_public.models import Person as ESPerson, FIELDS_PERSON
+from namesdb_public.models import Facility as ESFacility
 from namesdb_public.models import PersonFacility as ESPersonFacility
 from namesdb_public.models import PersonLocation as ESPersonLocation
 from namesdb_public.models import FIELDS_PERSONFACILITY
@@ -31,6 +32,7 @@ ELASTICSEARCH_CLASSES = {
         {'doctype': 'farrecord', 'class': ESFarRecord},
         {'doctype': 'wrarecord', 'class': ESWraRecord},
         {'doctype': 'farpage', 'class': ESFarPage},
+        {'doctype': 'facility', 'class': ESFacility},
         {'doctype': 'personlocation', 'class': ESPersonLocation},
     ]
 }
@@ -40,6 +42,7 @@ ELASTICSEARCH_CLASSES_BY_MODEL = {
     'farrecord': ESFarRecord,
     'wrarecord': ESWraRecord,
     'farpage': ESFarPage,
+    'facility': ESFacility,
     'personlocation': ESPersonLocation,
 }
 
@@ -175,6 +178,26 @@ class Facility(models.Model):
     def save(self, *args, **kwargs):
         """Save Facility, ignoring usernames and notes"""
         super(Facility, self).save()
+
+    def dict(self, related):
+        """JSON-serializable dict
+        """
+        d = {'id': self.facility_id}
+        for fieldname in FIELDS_FACILITY:
+            value = None
+            if hasattr(self, fieldname):
+                value = getattr(self, fieldname)
+            d[fieldname] = value
+        return d
+
+    def post(self, related, ds):
+        """Post Facility record to Elasticsearch
+        """
+        data = self.dict(related)
+        es_class = ELASTICSEARCH_CLASSES_BY_MODEL['facility']
+        return es_class.from_dict(data['facility_id'], data).save(
+            index=ds.index_name('facility'), using=ds.es
+        )
 
 
 FIELDS_LOCATION = [
