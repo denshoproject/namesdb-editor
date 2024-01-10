@@ -578,20 +578,34 @@ class Person(models.Model):
         """Build dict of Person wra_family_no->nr_id relations
         """
         query = """
-            SELECT names_person.wra_family_no, names_person.nr_id,
-                   names_person.preferred_name
+            SELECT names_person.wra_family_no,
+                   names_person.nr_id,
+                   names_person.preferred_name,
+                   names_person.birth_date,
+                   names_person.wra_individual_no,
+                   names_person.gender
             FROM names_person;
         """
         x = {}
         with connections['names'].cursor() as cursor:
             cursor.execute(query)
-            for wra_family_no,nr_id,preferred_name in cursor.fetchall():
+            for row in cursor.fetchall():
+                wra_family_no,nr_id,preferred_name,birth_date,wra_individual_no,gender = row
                 if not x.get(wra_family_no):
                     x[wra_family_no] = []
-                x[wra_family_no].append({
+                # redact exact birth date
+                try:
+                    birth_year = birth_date.year
+                except:
+                    birth_year = None
+                data = {
                     'nr_id': nr_id,
                     'preferred_name': preferred_name,
-                })
+                    'birth_year': birth_year,
+                    'wra_individual_no': wra_individual_no,
+                    'gender': gender,
+                }
+                x[wra_family_no].append(data)
         return x
 
     def dict(self, related):
