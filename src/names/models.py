@@ -502,6 +502,7 @@ class Person(models.Model):
     def related_facilities():
         """Build dict of Person->Facility relations
         """
+        facility_titles = {f.facility_id: f.title for f in Facility.objects.all()}
         query = """
             SELECT names_person.nr_id,
                 names_personfacility.facility_id,
@@ -518,6 +519,7 @@ class Person(models.Model):
                         x[nr_id] = []
                     x[nr_id].append({
                         'facility_id': facility_id,
+                        'facility_title': facility_titles.get(facility_id, 'UNSPECIFIED'),
                         'entry_date': entry_date,
                         'exit_date': exit_date,
                     })
@@ -527,9 +529,11 @@ class Person(models.Model):
     def related_farrecords():
         """Build dict of Person->FarRecord relations
         """
+        facility_titles = {f.facility_id: f.title for f in Facility.objects.all()}
         query = """
             SELECT names_person.nr_id,
                    names_farrecord.far_record_id,
+                   names_farrecord.facility,
                    names_farrecord.last_name, names_farrecord.first_name
             FROM names_farrecord INNER JOIN names_person
             ON names_farrecord.person_id = names_person.nr_id;
@@ -537,12 +541,15 @@ class Person(models.Model):
         x = {}
         with connections['names'].cursor() as cursor:
             cursor.execute(query)
-            for nr_id,far_record_id,last_name,first_name in cursor.fetchall():
+            for nr_id,far_record_id,facility_id,last_name,first_name in cursor.fetchall():
                 if nr_id:
                     if not x.get(nr_id):
                         x[nr_id] = []
+                    facility_title = facility_titles.get(facility_id, 'UNSPECIFIED')
                     x[nr_id].append({
                         'far_record_id': far_record_id,
+                        'facility_id': facility_id,
+                        'facility_title': facility_title,
                         'last_name': last_name,
                         'first_name': first_name,
                     })
@@ -552,9 +559,11 @@ class Person(models.Model):
     def related_wrarecords():
         """Build dict of Person->WraRecord relations
         """
+        facility_titles = {f.facility_id: f.title for f in Facility.objects.all()}
         query = """
             SELECT names_person.nr_id,
                    names_wrarecord.wra_record_id,
+                   names_wrarecord.facility,
                    names_wrarecord.lastname, names_wrarecord.firstname
             FROM names_wrarecord INNER JOIN names_person
             ON names_wrarecord.person_id = names_person.nr_id;
@@ -562,12 +571,15 @@ class Person(models.Model):
         x = {}
         with connections['names'].cursor() as cursor:
             cursor.execute(query)
-            for nr_id,wra_record_id,lastname,firstname in cursor.fetchall():
+            for nr_id,wra_record_id,facility_id,lastname,firstname in cursor.fetchall():
                 if nr_id:
                     if not x.get(nr_id):
                         x[nr_id] = []
+                    facility_title = facility_titles.get(facility_id, 'UNSPECIFIED')
                     x[nr_id].append({
                         'wra_record_id': wra_record_id,
+                        'facility_id': facility_id,
+                        'facility_title': facility_title,
                         'lastname': lastname,
                         'firstname': firstname,
                     })
