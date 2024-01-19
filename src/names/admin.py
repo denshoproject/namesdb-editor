@@ -328,33 +328,46 @@ class IreiRecordAdminForm(forms.ModelForm):
 class IreiRecordAdmin(admin.ModelAdmin):
     actions = [export_as_csv_action()]
     list_display = (
-        #'person', 'irei_id',
-        'person',
-        'lastname', 'firstname', 'middlename', 'preferredname', 'birthday',
-        'fetch_ts',
+        'person', 'irei_id',
+        'name',
+        'lastname', 'firstname', 'middlename',
+        'birthday',
+        'camps',
+        'fetch_ts', 'timestamp',
     )
-    #list_display_links = ('irei_id',)
-    list_display_links = ('lastname','firstname',)
-    list_filter = ('fetch_ts',)
-    #date_hierarchy = 'birthdate'
+    list_display_links = ('irei_id', 'name',)
+    list_filter = ('fetch_ts', 'timestamp',)
+    date_hierarchy = 'birthdate'
     search_fields = (
-        #'person', 'irei_id',
-        'lastname', 'firstname', 'middlename', 'preferredname', 'birthday',
+        # Enabling search on `person` causes error:
+        #     "Related Field got invalid lookup: icontains"
+        #'person',
+        'irei_id',
+        'name', 'lastname', 'firstname', 'middlename',
+        'birthday',
+        'camps',
     )
+    # Without autocomplete on `person`, Django admin will try to load
+    # *all* Person records into a dropdown menu, severely affecting performance!
     autocomplete_fields = ['person',]
-    readonly_fields = ('fetch_ts','lastname','firstname','middlename','preferredname','birthday',)
+    readonly_fields = (
+        'irei_id',
+        'name', 'lastname','firstname','middlename',
+        'birthday', 'year',
+        'camps',
+        'fetch_ts', 'timestamp',
+    )
     #form = IreiRecordAdminForm
     fieldsets = (
         (None, {'fields': (
-            #('irei_id', 'person'),
-            ('person'),
+            ('irei_id', 'person'),
         )}),
         (None, {'fields': (
-            'lastname',
-            ('firstname', 'middlename'),
-            'preferredname',
-            'birthday',
-            'fetch_ts',
+            'name',
+            ('lastname', 'firstname', 'middlename'),
+            ('birthday', 'year'),
+            'camps',
+            ('fetch_ts', 'timestamp'),
         )}),
     )
 
@@ -463,8 +476,9 @@ class IreiRecordInline(admin.TabularInline):
     extra = 0
     show_change_link = True
     fields = (
-        #'irei_id',
-        'lastname', 'firstname', 'middlename', 'preferredname', 'birthday',
+        'irei_id',
+        'name', 'birthday',
+        'lastname', 'firstname', 'middlename',
     )
 
     def has_add_permission(self, request, obj): return False

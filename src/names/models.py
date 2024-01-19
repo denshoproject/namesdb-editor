@@ -1475,85 +1475,176 @@ class WraRecordPerson():
         super(WraRecord, self).save()
 
 
-class IreiRecord(models.Model):
-    """
-    For some reason Django did not make a migration for IreiRecord so...
-    
-    CREATE TABLE IF NOT EXISTS "names_ireirecord" (
-        -- "irei_id" varchar(255) NOT NULL PRIMARY KEY,
-        "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-        "person_id" varchar(255) NULL REFERENCES "names_person" ("nr_id") DEFERRABLE INITIALLY DEFERRED,
-        "fetch_ts" date NOT NULL,
-        "birthday" varchar(255) NOT NULL,
-        -- "birthdate" date,
-        "lastname" varchar(255) NOT NULL,
-        "firstname" varchar(255) NOT NULL,
-        "middlename" varchar(255) NOT NULL,
-        "preferredname" varchar(255) NOT NULL
-    );
-    CREATE INDEX "names_ireirecord_person_id_876c7772" ON "names_ireirecord" ("person_id");
-    """
-    #irei_id   = models.CharField(max_length=255, primary_key=1, verbose_name='Irei ID')
-    person    = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
-    fetch_ts  = models.DateField(auto_now_add=True,   verbose_name='Last fetched')
-    birthday   = models.CharField(max_length=255, blank=1, verbose_name='Birthday')
-    #birthdate  = models.DateField(max_length=255, blank=1, verbose_name='Birth date')
-    lastname   = models.CharField(max_length=255, blank=1, verbose_name='Last name')
-    firstname  = models.CharField(max_length=255, blank=1, verbose_name='First name')
-    middlename = models.CharField(max_length=255, blank=1, verbose_name='Middle name')
-    preferredname = models.CharField(max_length=255, blank=1, verbose_name='Preferred name')
-
-    class Meta:
-        verbose_name = "Irei Record"
-
-    #def __repr__(self):
-    #    return '<{}(irei_id={})>'.format(
-    #        self.__class__.__name__, self.irei_id
-    #    )
-
-    #def __str__(self):
-    #    return self.irei_id
-
-    @staticmethod
-    def load_rowd(rowd):
-        """Given a JSON dict from a list, return an IreiRecord object
-        
-        Reads data files from irei-fetch/ireizo-api-fetch-v2.py
-        """
-        #try:
-        #    birth_date = parser.parse(rowd['birthday'])
-        #except parser._parser.ParserError:
-        #    birth_date = None
-        try:
-            #o = IreiRecord.objects.get( irei_id=rowd['irei_id'] )
-            o = IreiRecord.objects.get(
-                birthday=rowd['birthday'],
-                #birthdate=birth_date,
-                lastname=rowd['lastname'],
-                firstname=rowd['firstname'],
-                middlename=rowd['middlename'],
-            )
-        except IreiRecord.DoesNotExist:
-            o = IreiRecord()
-        for key,val in rowd.items():
-            if val:
-                if isinstance(val, str):
-                    val = val.replace('00:00:00', '').strip()
-                setattr(o, key, val)
-        return o
-
 IREIRECORD_FIELDS = [
     'person_id',
+    'irei_id',
     'fetch_ts',
-    #'irei_id',
-    'birthday',
-    #'birthdate',
+    'year',
+    'birthday',  # -> birthdate',
     'lastname',
     'firstname',
     'middlename',
     'preferredname',
+    'camp',  # list
 ]
 
+IREI_WALL_FIELDS = {
+    'id': 'irei_id',
+    'name': 'name',
+    'birthday': 'birthday',
+    'year': 'year',
+    'camps': 'camps',
+    '_fetch_ts': 'fetch_ts',
+}
+
+IREI_API_FIELDS = {
+    'id': 'irei_id',
+    'firstName': 'firstname',
+    'middleName': 'middlename',
+    'lastName': 'lastname',
+    'birthday': 'birthday',
+    '_fetch_ts': 'fetch_ts',
+}
+
+class IreiRecord(models.Model):
+    """Irei data from the pubsite-people-*.json files, retrieved by ireizo-fetch/ireizo-pubsite-fetch.py
+    
+    For some reason Django did not make a migration for IreiRecord so...
+    
+    CREATE TABLE IF NOT EXISTS "names_ireirecord" (
+        "irei_id" varchar(255) NOT NULL PRIMARY KEY,
+        "person_id" varchar(255) NULL REFERENCES "names_person" ("nr_id") DEFERRABLE INITIALLY DEFERRED,
+        "year" varchar(255),
+        "birthday" varchar(255) NOT NULL,
+        "birthdate" date,
+        "name" varchar(255) NOT NULL,
+        "lastname" varchar(255) NOT NULL,
+        "firstname" varchar(255) NOT NULL,
+        "middlename" varchar(255) NOT NULL,
+        "camps" varchar(255) NOT NULL,
+        "fetch_ts" date,
+        "timestamp" datetime
+    );
+    CREATE INDEX "names_ireirecord_person_id_76c77728" ON "names_ireirecord" ("irei_id");
+    CREATE INDEX "names_ireirecord_person_id_876c7772" ON "names_ireirecord" ("person_id");
+    """
+    irei_id   = models.CharField(max_length=255, primary_key=1, verbose_name='Irei ID')
+    person    = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
+    year       = models.CharField(max_length=255, blank=1, verbose_name='Birth year')
+    birthday   = models.CharField(max_length=255, blank=1, verbose_name='Birthday')
+    birthdate  = models.DateField(max_length=255, blank=1, verbose_name='Birth date')
+    name       = models.CharField(max_length=255, blank=1, verbose_name='Name')
+    lastname   = models.CharField(max_length=255, blank=1, verbose_name='Last name')
+    firstname  = models.CharField(max_length=255, blank=1, verbose_name='First name')
+    middlename = models.CharField(max_length=255, blank=1, verbose_name='Middle name')
+    camps      = models.CharField(max_length=255, blank=1, verbose_name='Camps')
+    fetch_ts  = models.DateField(auto_now_add=True, blank=1, null=1, verbose_name='Last fetched')
+    timestamp  = models.DateTimeField(auto_now=True,       verbose_name='Last Modified')
+
+    class Meta:
+        verbose_name = "Irei Record"
+
+    def __repr__(self):
+        return '<{}(irei_id={})>'.format(
+            self.__class__.__name__, self.irei_id
+        )
+
+    def __str__(self):
+        return self.irei_id
+
+    def save(self, *args, **kwargs):
+        """Save IreiRecord
+        """
+        ## has the record changed?
+        #try:
+        #    old = IreiRecord.objects.get(irei_id=self.irei_id)
+        #except IreiRecord.DoesNotExist:
+        #    old = None
+        #changed = Revision.object_has_changed(self, old, IreiRecord)
+        ## now save
+        self.timestamp = timezone.now()
+        super(IreiRecord, self).save()
+        #if changed:
+        #    r = Revision(
+        #        content_object=self,
+        #        username=username, note=note, diff=make_diff(old, self)
+        #    )
+        #    r.save()
+
+    @staticmethod
+    def load_irei_data(rowds_api, rowds_wall):
+        """Loads API & Wall data, reconciles them, adds/updates IreiRecord
+        """
+        irei_records = {}
+        # load wall data into dict - already has irei_ids
+        for rowd in rowds_wall:
+            # convert keys from Irei's fieldnames to ours
+            data = {
+                modelfield: rowd.get(filefield)
+                for filefield,modelfield in IREI_WALL_FIELDS.items()
+            }
+            irei_id = data['irei_id']
+            irei_records[irei_id] = data
+        # add API data to irei_people (depends on API data having irei_id)
+        for rowd in rowds_api:
+            # convert keys from Irei's fieldnames to ours
+            data = {
+                modelfield: rowd.get(filefield)
+                for filefield,modelfield in IREI_API_FIELDS.items()
+            }
+            irei_id = data.get('irei_id')
+            # if there's irei_id, match irei_people item and add API data
+            # NOTE API data overwrites WALL data with same fieldname
+            if irei_id and irei_records.get(irei_id):
+                record = irei_records[irei_id]
+                for field,value in data.items():
+                    record[field] = value
+                irei_records[irei_id] = record
+        return irei_records
+
+    @staticmethod
+    def save_record(rowd):
+        """Add or update an IreiRecord based on rowd
+        """
+        irei_id = rowd.pop('irei_id')
+        try:
+            record = IreiRecord.objects.get(irei_id=irei_id)
+            new = False
+        except:
+            record = IreiRecord(irei_id=irei_id)
+            new = True
+        changed = []
+        # special formatting
+        # year
+        if rowd.get('year'):
+            rowd['year'] = str(rowd['year'])
+        # birthday -> birthdate
+        if rowd.get('birthday') and rowd['birthday'] != record.birthday:
+            record.birthday = rowd.pop('birthday')
+            try:
+                record.birthdate = parser.parse(record.birthday)
+            except parser._parser.ParserError:
+                record.birthdate = None
+            changed.append('birthday')
+        # camps
+        camps = '; '.join(rowd.pop('camps'))
+        if camps and camps != record.camps:
+            record.camps = camps
+            changed.append('camps')
+        # everything else
+        for fieldname,value in rowd.items():
+            if rowd.get(fieldname) and rowd[fieldname] != getattr(record,fieldname):
+                setattr(record, fieldname, value)
+                changed.append(fieldname)
+        if new:
+            record.save()
+            return 'created'
+        elif changed:
+            record.save()
+            return f'updated {changed}'
+        return '-------'
+
+    
 
 class IreiRecordPerson():
     """Fake class used for importing IreiRecord->Person links"""
