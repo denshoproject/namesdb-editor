@@ -472,6 +472,10 @@ class Person(models.Model):
             )
             r.save()
 
+    def revisions(self):
+        """List of object Revisions"""
+        return Revision.revisions(self, 'nr_id')
+
     def _make_nr_id(self, username):
         """[Deprecated] Generate a new unique ID
         """
@@ -492,11 +496,6 @@ class Person(models.Model):
                 f'Could not connect to ddr-idservice at {err.request.url}.' \
                 ' Please check settings.'
             )
-
-    def revisions(self):
-        """List of object Revisions
-        """
-        return Revision.objects.filter(model='persopn', record_id=self.nr_id)
 
     @staticmethod
     def related_facilities():
@@ -1041,9 +1040,8 @@ class FarRecord(models.Model):
             r.save()
 
     def revisions(self):
-        """List of object Revisions
-        """
-        return Revision.objects.filter(model='far', record_id=self.far_record_id)
+        """List of object Revisions"""
+        return Revision.revisions(self, 'far_record_id')
 
     @staticmethod
     def related_persons():
@@ -1355,11 +1353,8 @@ class WraRecord(models.Model):
             r.save()
 
     def revisions(self):
-        """List of object Revisions
-        """
-        return Revision.objects.filter(
-            model='wra', record_id=self.wra_record_id
-        )
+        """List of object Revisions"""
+        return Revision.revisions(self, 'wra_record_id')
 
     @staticmethod
     def related_persons():
@@ -1589,9 +1584,8 @@ class IreiRecord(models.Model):
             r.save()
 
     def revisions(self):
-        """List of object Revisions
-        """
-        return Revision.objects.filter(model='ireirecord', irei_id=self.irei_id)
+        """List of object Revisions"""
+        return Revision.revisions(self, 'irei_id')
 
     @staticmethod
     def load_irei_data(rowds_api, rowds_wall):
@@ -1683,6 +1677,20 @@ class Revision(models.Model):
 
     def __repr__(self):
         return f'<Revision {self.content_object} {self.timestamp} {self.username}>'
+
+    @staticmethod
+    def revisions(obj, fieldname):
+        """List of revisions for object
+        
+        @param obj: OBJECT The object
+        @param fieldname: str Name of primary key field
+        """
+        return Revision.objects.filter(
+            content_type=ContentType.objects.get(
+                app_label=obj._meta.app_label, model=obj._meta.model_name
+            ),
+            object_id=getattr(obj, fieldname)
+        )
 
     @staticmethod
     def object_has_changed(new_object, old_object, object_class):
