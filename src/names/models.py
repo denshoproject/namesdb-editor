@@ -1555,21 +1555,43 @@ class IreiRecord(models.Model):
     def save(self, *args, **kwargs):
         """Save IreiRecord
         """
-        ## has the record changed?
-        #try:
-        #    old = IreiRecord.objects.get(irei_id=self.irei_id)
-        #except IreiRecord.DoesNotExist:
-        #    old = None
-        #changed = Revision.object_has_changed(self, old, IreiRecord)
-        ## now save
+        # request.user added to obj in names.admin.FarRecordAdmin.save_model
+        if getattr(self, 'user', None):
+            username = getattr(self, 'user').username
+        # ...or comes from names.cli.load
+        elif kwargs.get('username'):
+            username = kwargs['username']
+        else:
+            username = 'UNKNOWN'
+        # note is added to obj in names.admin.FarRecordAdmin.save_model
+        if getattr(self, 'note', None):
+            note = getattr(self, 'note')
+        # ...or comes from names.cli.load
+        elif kwargs.get('note'):
+            note = kwargs['note']
+        else:
+            note = 'DEFAULT NOTE TEXT'
+        
+        # has the record changed?
+        try:
+            old = IreiRecord.objects.get(irei_id=self.irei_id)
+        except IreiRecord.DoesNotExist:
+            old = None
+        changed = Revision.object_has_changed(self, old, IreiRecord)
+        # now save
         self.timestamp = timezone.now()
         super(IreiRecord, self).save()
-        #if changed:
-        #    r = Revision(
-        #        content_object=self,
-        #        username=username, note=note, diff=make_diff(old, self)
-        #    )
-        #    r.save()
+        if changed:
+            r = Revision(
+                content_object=self,
+                username=username, note=note, diff=make_diff(old, self)
+            )
+            r.save()
+
+    def revisions(self):
+        """List of object Revisions
+        """
+        return Revision.objects.filter(model='ireirecord', irei_id=self.irei_id)
 
     @staticmethod
     def load_irei_data(rowds_api, rowds_wall):
