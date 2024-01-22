@@ -315,40 +315,6 @@ def load_csv(datafile, sql_class, offset, limit, username, note):
     for f in failed:
         click.echo(f)
 
-def load_irei(datafile, sql_class, username, note):
-    """Load data files from irei-fetch/ireizo-api-fetch-v2.py
-    [
-        {
-            "person": {
-                "firstName": "Yaeichi",
-                "middleName": "",
-                "lastName": "Ota",
-                "birthday": "1852-11-20",
-                "fetch_ts": "2023-04-20"
-            }
-        },
-        ...
-    """
-    with Path(datafile).open('r') as f:
-        # yes I know these are not rowds from a CSV file
-        rowds = json.loads(f.read())
-    num = len(rowds)
-    for n,rowd in enumerate(tqdm(
-            rowds, desc='Writing database', ascii=True, unit='record'
-    )):
-        # fields in right order then add values
-        r = {fieldname: None for fieldname in models.IREIRECORD_FIELDS}
-        for k,v in rowd['person'].items():
-            r[k.lower()] = v
-        try:
-            o = sql_class.load_rowd(r)
-            if o:
-                o.save()
-        except:
-            err = sys.exc_info()[0]
-            click.echo(f'FAIL {rowd} {err}')
-            raise
-
 def load_facility(datafile, sql_class, username, note):
     """Load data files from densho-vocab/api/0.2/facility.json
     """
@@ -363,6 +329,52 @@ def load_facility(datafile, sql_class, username, note):
             err = sys.exc_info()[0]
             click.echo(f'FAIL {rowd} {err}')
             raise
+
+@namesdb.command()
+@click.option('--debug','-d', is_flag=True, default=False)
+@click.argument('output')
+@click.argument('username')
+def loadirei(debug, output, username):
+    """Load data files from JSONL output of irei-fetch/ireizo.py
+    
+    output:
+    - Directory containing Irei API and wall data e.g. output/20240118
+    - File containing Irei API and wall data e.g. output/20240118/api-people-19.json
+
+    Expectations:
+    - An output directory contains both API and wall data
+    - all data is in JSONL
+    """
+    if Path(output).is_dir():
+        paths = sorted(Path(output).iterdir())
+    elif Path(output).is_file():
+        paths = [Path(output)]
+    rowds_api = []
+    rowds_wall = []
+    for n,path in enumerate(paths):
+        if not '.jsonl' in path.name:
+            continue
+        with path.open('r') as f:
+            rowds = [json.loads(line) for line in f.readlines()]
+        if 'api-people' in path.name:
+            for rowd in rowds:
+                rowds_api.append(rowd)
+        elif 'pubsite-people' in path.name:
+            for rowd in rowds:
+                rowds_wall.append(rowd)
+    click.echo(
+        f"{n} files - {len(rowds_api)} API records - {len(rowds_wall)} wall records"
+    )
+    # merge data and save objects
+    irei_records = models.IreiRecord.load_irei_data(rowds_api, rowds_wall)
+    click.echo(f"{len(irei_records)=}")
+    n = 0
+    num = len(irei_records.keys())
+    for irei_id,rowd in irei_records.items():
+        n += 1
+        feedback = models.IreiRecord.save_record(rowd)
+        click.echo(f"{n}/{num} {irei_id} {feedback}")
+
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
