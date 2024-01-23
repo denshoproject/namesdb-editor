@@ -368,12 +368,14 @@ def loadirei(debug, output, username):
     # merge data and save objects
     irei_records = models.IreiRecord.load_irei_data(rowds_api, rowds_wall)
     click.echo(f"{len(irei_records)=}")
+    start = datetime.now()
     n = 0
     num = len(irei_records.keys())
     for irei_id,rowd in irei_records.items():
         n += 1
         feedback = models.IreiRecord.save_record(rowd)
         click.echo(f"{n}/{num} {irei_id} {feedback}")
+    click.echo(f"Elapsed {datetime.now() - start}")
 
 
 @namesdb.command()
