@@ -322,7 +322,7 @@ class WraRecordAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         # request.user and notes are used by Revision
         obj.user = request.user
-        obj.note = form.cleaned_data['note']
+        obj.note = ''
         super().save_model(request, obj, form, change)
 
 
