@@ -371,12 +371,14 @@ def loadirei(debug, output, username):
     start = datetime.now()
     n = 0
     num = len(irei_records.keys())
+    updated = 0
     for irei_id,rowd in irei_records.items():
         n += 1
         feedback = models.IreiRecord.save_record(rowd)
-        click.echo(f"{n}/{num} {irei_id} {feedback}")
-    click.echo(f"Elapsed {datetime.now() - start}")
-
+        if feedback:
+            updated += 1
+            click.echo(f"{n}/{num} {irei_id} {feedback}")
+    click.echo(f"{updated} updated in {datetime.now() - start}")
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
