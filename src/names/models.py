@@ -1632,12 +1632,14 @@ class IreiRecord(models.Model):
                 setattr(record, fieldname, value)
                 changed.append(fieldname)
         if new:
+            record.fetch_ts = date.today()
             record.save()
             return 'created'
         elif changed:
+            record.fetch_ts = date.today()
             record.save()
             return f'updated {changed}'
-        return '-------'
+        return None
 
     
 
