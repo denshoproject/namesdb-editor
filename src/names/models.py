@@ -23,6 +23,8 @@ from namesdb_public.models import FarRecord as ESFarRecord, FIELDS_FARRECORD
 from namesdb_public.models import WraRecord as ESWraRecord, FIELDS_WRARECORD
 from namesdb_public.models import FarPage as ESFarPage, FIELDS_FARPAGE
 from namesdb_public.models import FIELDS_BY_MODEL
+from ireizo_public.models import IreiRecord as ESIreiRecord, FIELDS_IREIRECORD
+
 
 INDEX_PREFIX = 'names'
 
@@ -31,6 +33,7 @@ ELASTICSEARCH_CLASSES = {
         {'doctype': 'person', 'class': ESPerson},
         {'doctype': 'farrecord', 'class': ESFarRecord},
         {'doctype': 'wrarecord', 'class': ESWraRecord},
+        {'doctype': 'ireirecord', 'class': ESIreiRecord},
         {'doctype': 'farpage', 'class': ESFarPage},
         {'doctype': 'facility', 'class': ESFacility},
         {'doctype': 'personlocation', 'class': ESPersonLocation},
@@ -41,6 +44,7 @@ ELASTICSEARCH_CLASSES_BY_MODEL = {
     'person': ESPerson,
     'farrecord': ESFarRecord,
     'wrarecord': ESWraRecord,
+    'ireirecord': ESIreiRecord,
     'farpage': ESFarPage,
     'facility': ESFacility,
     'personlocation': ESPersonLocation,
@@ -1640,6 +1644,51 @@ class IreiRecord(models.Model):
             record.save()
             return f'updated {changed}'
         return None
+
+    @staticmethod
+    def related_persons():
+        query = """
+            SELECT names_ireirecord.irei_id, names_person.nr_id,
+                   names_person.preferred_name
+            FROM names_ireirecord
+            INNER JOIN names_person ON names_ireirecord.person_id = names_person.nr_id
+        """
+        with connections['names'].cursor() as cursor:
+            cursor.execute(query)
+            return {
+                irei_id: {
+                    'nr_id': nr_id, 'preferred_name': preferred_name
+                }
+                for irei_id,nr_id,preferred_name in cursor.fetchall()
+                if nr_id
+            }
+
+    def dict(self, related):
+        """JSON-serializable dict
+        """
+        d = {'id': self.irei_id}
+        for fieldname in FIELDS_IREIRECORD:
+            if fieldname == 'person':
+                value = None
+                if related['persons'].get(self.irei_id):
+                    person = related['persons'][self.irei_id]
+                    value = {
+                        'id': person['nr_id'],
+                        'name': person['preferred_name'],
+                    }
+            else:
+                value = str(getattr(self, fieldname, ''))
+            d[fieldname] = value
+        return d
+
+    def post(self, related, ds):
+        """Post IreiRecord to Elasticsearch
+        """
+        data = self.dict(related)
+        es_class = ELASTICSEARCH_CLASSES_BY_MODEL['ireirecord']
+        return es_class.from_dict(data['irei_id'], data).save(
+            index=ds.index_name('ireirecord'), using=ds.es
+        )
 
     
 

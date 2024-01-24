@@ -120,6 +120,7 @@ INSTALLED_APPS = [
     'editor',
     'names',
     'namesdb_public',
+    'ireizo_public',
 ]
 
 REST_FRAMEWORK = {

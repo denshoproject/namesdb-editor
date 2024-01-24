@@ -63,6 +63,7 @@ from . import models
 from . import noidminter
 from . import publish
 from namesdb_public import models as models_public
+from ireizo_public import models as models_ireizo
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -485,6 +486,7 @@ def post(hosts, limit, test, debug, model):
     MODELS = [
         'person', 'farrecord', 'far', 'wrarecord', 'wra', 'farpage',
         'personlocation', 'facility', 'location',
+        'ireirecord', 'irei',
     ]
     if model not in MODELS:
         click.echo(f'Sorry, model has to be one of {MODELS}')
@@ -509,6 +511,8 @@ def post(hosts, limit, test, debug, model):
     elif model in ['wrarecord', 'wra']:
         related['persons'] = models.WraRecord.related_persons()
         related['family'] = models.WraRecord.related_family()
+    elif model in ['ireirecord', 'irei']:
+        related['persons'] = models.IreiRecord.related_persons()
     elif model == 'personlocation':
         related['persons'] = models.PersonLocation.related_persons()
         related['locations'] = models.PersonLocation.related_locations()
@@ -529,6 +533,10 @@ def post(hosts, limit, test, debug, model):
         elif model == 'wrarecord':
             records = sql_class.objects.filter(
                 wra_record_id__in=TEST_DATA['wrarecord']
+            )
+        elif model == 'ireirecord':
+            records = sql_class.objects.filter(
+                irei_id__in=TEST_DATA['ireirecord']
             )
         else:
             print(f"ERR test in {TEST_DATA.keys()}"); sys.exit(1)
