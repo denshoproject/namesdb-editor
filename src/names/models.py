@@ -1598,7 +1598,7 @@ class IreiRecord(models.Model):
         return irei_records
 
     @staticmethod
-    def save_record(rowd):
+    def save_record(rowd, fetchdate=date.today()):
         """Add or update an IreiRecord based on rowd
         """
         irei_id = rowd.pop('irei_id')
@@ -1632,11 +1632,11 @@ class IreiRecord(models.Model):
                 setattr(record, fieldname, value)
                 changed.append(fieldname)
         if new:
-            record.fetch_ts = date.today()
+            record.fetch_ts = fetchdate
             record.save()
             return 'created'
         elif changed:
-            record.fetch_ts = date.today()
+            record.fetch_ts = fetchdate
             record.save()
             return f'updated {changed}'
         return None
