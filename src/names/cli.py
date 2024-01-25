@@ -472,6 +472,12 @@ TEST_DATA = {
         '20182',  # Ikeda Kanjiro
         '82360',  # Sumida Chimata
     ],
+    'ireirecord': [
+        'a73dd8af-a206-467e-b132-96f46dcc4d18',  # Abe Tamotsu
+        'ce0a2d6a-ccdb-4a5c-8446-4de861d64cd9',  # Sameshima Sadako
+        '9db8123d-ed7c-43bd-b0ef-2d9faab8d4fd',  # Ikeda Kanjiro
+        '956ce608-1388-4c5a-bc6b-e3c77969d7c8',  # Sumida Chimata
+    ],
 }
 
 @namesdb.command()
