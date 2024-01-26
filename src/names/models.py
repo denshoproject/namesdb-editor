@@ -1602,7 +1602,7 @@ class IreiRecord(models.Model):
         return irei_records
 
     @staticmethod
-    def save_record(rowd, fetchdate=date.today()):
+    def save_record(rowd, fetchdate=date.today(), dryrun=False):
         """Add or update an IreiRecord based on rowd
         """
         irei_id = rowd.pop('irei_id')
@@ -1640,15 +1640,24 @@ class IreiRecord(models.Model):
             if rowd.get(fieldname) and rowd[fieldname] != getattr(record,fieldname):
                 setattr(record, fieldname, value)
                 changed.append(fieldname)
+        record.fetch_ts = fetchdate
+        if not (new or changed):
+            return None  # no change, just quit now
+        
+        # "dryrun" makes the next part awkward so flip
+        if dryrun: armed = False
+        else:      armed = True
+        
         if new:
-            record.fetch_ts = fetchdate
-            record.save()
-            return 'created'
+            feedback = 'created'
         elif changed:
-            record.fetch_ts = fetchdate
+            feedback = f'updated {changed}'
+        if armed:
             record.save()
-            return f'updated {changed}'
-        return None
+        else:
+            feedback = f'{feedback} DRYRUN'
+        return feedback
+        
 
     @staticmethod
     def related_persons():

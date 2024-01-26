@@ -333,11 +333,13 @@ def load_facility(datafile, sql_class, username, note):
 
 @namesdb.command()
 @click.option('--debug','-d', is_flag=True, default=False)
-@click.option('--fetchdate','-D', default=date.today(),
+@click.option('--fetchdate','-F', default=date.today(),
               help='(YYYY-MM-DD) Date data was fetched if not today.')
+@click.option('--dryrun','-D', is_flag=True, default=False,
+              help="Don't write to database.")
 @click.argument('output')
 @click.argument('username')
-def loadirei(debug, fetchdate, output, username):
+def loadirei(debug, fetchdate, dryrun, output, username):
     """Load data files from JSONL output of irei-fetch/ireizo.py
     
     output:
@@ -379,7 +381,9 @@ def loadirei(debug, fetchdate, output, username):
     updated = 0
     for irei_id,rowd in irei_records.items():
         n += 1
-        feedback = models.IreiRecord.save_record(rowd, fetchdate=fetchdate)
+        feedback = models.IreiRecord.save_record(
+            rowd, fetchdate=fetchdate, dryrun=dryrun
+        )
         if feedback:
             updated += 1
             click.echo(f"{n}/{num} {irei_id} {feedback}")
