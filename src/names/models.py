@@ -1630,6 +1630,11 @@ class IreiRecord(models.Model):
         if camps and camps != record.camps:
             record.camps = camps
             changed.append('camps')
+        # don't overwrite persons
+        # irei data shouldn't include this but just to be sure...
+        for fieldname in ['person', 'person_id', 'nr_id']:
+            if rowd.get(fieldname):
+                rowd.pop(fieldname)
         # everything else
         for fieldname,value in rowd.items():
             if rowd.get(fieldname) and rowd[fieldname] != getattr(record,fieldname):
