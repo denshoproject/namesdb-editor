@@ -19,6 +19,7 @@ from django.views.generic.base import RedirectView
 
 urlpatterns = [
     path('names/', include('namesdb_public.urls')),
+    path('irei/', include('ireizo_public.urls')),
     path('admin/', admin.site.urls),
     path('', RedirectView.as_view(url=reverse_lazy('admin:index'))),
 ]

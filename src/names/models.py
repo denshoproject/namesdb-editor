@@ -23,6 +23,8 @@ from namesdb_public.models import FarRecord as ESFarRecord, FIELDS_FARRECORD
 from namesdb_public.models import WraRecord as ESWraRecord, FIELDS_WRARECORD
 from namesdb_public.models import FarPage as ESFarPage, FIELDS_FARPAGE
 from namesdb_public.models import FIELDS_BY_MODEL
+from ireizo_public.models import IreiRecord as ESIreiRecord, FIELDS_IREIRECORD
+
 
 INDEX_PREFIX = 'names'
 
@@ -31,6 +33,7 @@ ELASTICSEARCH_CLASSES = {
         {'doctype': 'person', 'class': ESPerson},
         {'doctype': 'farrecord', 'class': ESFarRecord},
         {'doctype': 'wrarecord', 'class': ESWraRecord},
+        {'doctype': 'ireirecord', 'class': ESIreiRecord},
         {'doctype': 'farpage', 'class': ESFarPage},
         {'doctype': 'facility', 'class': ESFacility},
         {'doctype': 'personlocation', 'class': ESPersonLocation},
@@ -41,6 +44,7 @@ ELASTICSEARCH_CLASSES_BY_MODEL = {
     'person': ESPerson,
     'farrecord': ESFarRecord,
     'wrarecord': ESWraRecord,
+    'ireirecord': ESIreiRecord,
     'farpage': ESFarPage,
     'facility': ESFacility,
     'personlocation': ESPersonLocation,
@@ -1598,7 +1602,7 @@ class IreiRecord(models.Model):
         return irei_records
 
     @staticmethod
-    def save_record(rowd):
+    def save_record(rowd, fetchdate=date.today(), dryrun=False):
         """Add or update an IreiRecord based on rowd
         """
         irei_id = rowd.pop('irei_id')
@@ -1626,20 +1630,79 @@ class IreiRecord(models.Model):
         if camps and camps != record.camps:
             record.camps = camps
             changed.append('camps')
+        # don't overwrite persons
+        # irei data shouldn't include this but just to be sure...
+        for fieldname in ['person', 'person_id', 'nr_id']:
+            if rowd.get(fieldname):
+                rowd.pop(fieldname)
         # everything else
         for fieldname,value in rowd.items():
             if rowd.get(fieldname) and rowd[fieldname] != getattr(record,fieldname):
                 setattr(record, fieldname, value)
                 changed.append(fieldname)
+        record.fetch_ts = fetchdate
+        if not (new or changed):
+            return None  # no change, just quit now
+        
+        # "dryrun" makes the next part awkward so flip
+        if dryrun: armed = False
+        else:      armed = True
+        
         if new:
-            record.fetch_ts = date.today()
-            record.save()
-            return 'created'
+            feedback = 'created'
         elif changed:
-            record.fetch_ts = date.today()
+            feedback = f'updated {changed}'
+        if armed:
             record.save()
-            return f'updated {changed}'
-        return None
+        else:
+            feedback = f'{feedback} DRYRUN'
+        return feedback
+        
+
+    @staticmethod
+    def related_persons():
+        query = """
+            SELECT names_ireirecord.irei_id, names_person.nr_id,
+                   names_person.preferred_name
+            FROM names_ireirecord
+            INNER JOIN names_person ON names_ireirecord.person_id = names_person.nr_id
+        """
+        with connections['names'].cursor() as cursor:
+            cursor.execute(query)
+            return {
+                irei_id: {
+                    'nr_id': nr_id, 'preferred_name': preferred_name
+                }
+                for irei_id,nr_id,preferred_name in cursor.fetchall()
+                if nr_id
+            }
+
+    def dict(self, related):
+        """JSON-serializable dict
+        """
+        d = {'id': self.irei_id}
+        for fieldname in FIELDS_IREIRECORD:
+            if fieldname == 'person':
+                value = None
+                if related['persons'].get(self.irei_id):
+                    person = related['persons'][self.irei_id]
+                    value = {
+                        'id': person['nr_id'],
+                        'name': person['preferred_name'],
+                    }
+            else:
+                value = str(getattr(self, fieldname, ''))
+            d[fieldname] = value
+        return d
+
+    def post(self, related, ds):
+        """Post IreiRecord to Elasticsearch
+        """
+        data = self.dict(related)
+        es_class = ELASTICSEARCH_CLASSES_BY_MODEL['ireirecord']
+        return es_class.from_dict(data['irei_id'], data).save(
+            index=ds.index_name('ireirecord'), using=ds.es
+        )
 
     
 
