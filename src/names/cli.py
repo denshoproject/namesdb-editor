@@ -570,10 +570,16 @@ def post(hosts, limit, test, debug, model):
         records = sql_class.objects.all()[:limit]
     else:
         records = sql_class.objects.all()
+    failed = []
     for record in tqdm(
         records, desc='Writing to Elasticsearch', ascii=True, unit='record'
     ):
-        record.post(related, ds)
+        try:
+            record.post(related, ds)
+        except:
+            failed.append(record)
+    if failed:
+        click.echo(f"FAIL {record}")
 
 def _make_record_url(hosts, model, record_id):
     return f'http://{hosts}/{models.INDEX_PREFIX}{model}/_doc/{record_id}'
