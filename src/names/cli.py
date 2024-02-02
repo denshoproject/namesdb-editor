@@ -459,32 +459,44 @@ def status(hosts):
 
 TEST_DATA = {
     'person': [
-        '88922/nr0097z44',  # Abe Tamotsu
-        '88922/ddr000002f', # Sameshima Sadako
-        '88922/nr003ck36',  # Ikeda Kanjiro
         '88922/nr007bb08',  # Sumida Chimata
         '88922/nr009tb36',  # Nagatomi Shinjo
+        '88922/nr015xj9z',  # Mitsuko Isoshima
+        '88922/nr009p41d',  # Florence Nobuko Kuwata
+        '88922/nr009pw68',  # Akio Matsumoto
+        '88922/nr009dd8h',  # Fumiko Hayashida
+        '88922/nr009s43n',  # Moritani Tatsukichi
+        '88922/nr012cq3s',  # Kazuko Kay Nakao
     ],
     'farrecord': [
-        'minidoka2-1', 'tulelake1-91',       # Abe Tamotsu
-        'manzanar1-7910', 'manzanar1-11458', # Sameshima Sadako
-        'granada1-1876',  # Ikeda Kanjiro
         'rohwer1-9215',   # Sumida Chimata
         'manzanar1-5772',  # Nagatomi Shinjo
+        'minidoka1-2836',  # Mitsuko Isoshima
+        'manzanar1-4281',  # Florence Nobuko Kuwata
+        'manzanar1-4564',  # Akio Matsumoto
+        'manzanar1-1461',  # Fumiko Hayashida
+        'manzanar1-5360',  # Moritani Tatsukichi
+        'manzanar1-7724',  # Kazuko Kay Nakao
     ],
     'wrarecord': [
-        '303',  # Abe Tamotsu
-        # Sameshima Sadako
-        '20182',  # Ikeda Kanjiro
         '82360',  # Sumida Chimata
         '54456',  # Nagatomi Shinjo
+        '24142',  # Mitsuko Isoshima
+        '41400',  # Florence Nobuko Kuwata
+        '44050',  # Akio Matsumoto
+        '14485',  # Fumiko Hayashida
+        '51394',  # Moritani Tatsukichi
+        '72862',  # Kazuko Kay Nakao
     ],
     'ireirecord': [
-        'a73dd8af-a206-467e-b132-96f46dcc4d18',  # Abe Tamotsu
-        'ce0a2d6a-ccdb-4a5c-8446-4de861d64cd9',  # Sameshima Sadako
-        '9db8123d-ed7c-43bd-b0ef-2d9faab8d4fd',  # Ikeda Kanjiro
         '956ce608-1388-4c5a-bc6b-e3c77969d7c8',  # Sumida Chimata
         '47d685ad-a416-4192-a3c2-09e6a67c03c6',  # Nagatomi Shinjo
+        'd7e283ae-4816-4c13-a2ce-ad296303be3f',  # Mitsuko Isoshima
+        '9691522b-dee8-400e-812a-fca2ef3f4885',  # Florence Nobuko Kuwata
+        'a6f91266-c2ea-47cb-943c-5b8653dba7f0',  # Akio Matsumoto
+        '527cbf49-01aa-41ed-aecb-0d95dc71b378',  # Fumiko Hayashida
+        '6c26e163-7127-430e-9a0c-3e61a964fda1',  # Moritani Tatsukichi
+        '315332aa-a0c5-4547-a0a8-81d2120bf8f6',  # Kazuko Kay Nakao
     ],
 }
 
