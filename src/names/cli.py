@@ -647,24 +647,29 @@ def delete(hosts, model, record_id):
 @click.option('--noheaders','-n', is_flag=True, default=False)
 @click.argument('csvfile')
 def searchmulti(hosts, sql, elastic, noheaders, csvfile):
-    """Consume output of `ddrnames export` suggest Person records for each name
+    """Reads output of `ddrnames dump` and suggests Person records for each name
     
+    \b
     Run `ddrnames help` to learn how to produce source data.
-    
-    The SQLite database must be prepared for full-text search:
-        sqlite-utils enable-fts --fts5 db/namesregistry.db names_person nr_id \
-            family_name given_name given_name_alt other_names middle_name \
-            prefix_name suffix_name jp_name preferred_name
-    
-    If you previously ran `enable-fts` with a different FTS version you should
-    run this before the previous command
-        sqlite-utils disable-fts db/namesregistry.db names_person
-    
+
+    \b
     Examples:
-    namesdb searchmulti /tmp/ddr-csujad-30-creators.csv --elastic
-    namesdb searchmulti /tmp/ddr-csujad-30-creators.csv --sql
+        namesdb searchmulti /tmp/ddr-csujad-30-creators.csv --elastic
+        namesdb searchmulti /tmp/ddr-csujad-30-creators.csv --sql
+
+    \b
+    This command returns CSV-formatted data with the following fields:
+        ddr_id, name_text, match_name, match_nrid, match_score
     
-    Returns: ddr_id, name_text, match_name, match_nrid, match_score
+    \b
+    If you don't see results, you may need to prepare the SQLite database
+    for full-text search:
+        sqlite-utils enable-fts --fts5 db/namesregistry.db names_person nr_id family_name given_name given_name_alt other_names middle_name prefix_name suffix_name jp_name preferred_name
+    
+    \b
+    If you get results but they look wrong, you may disable and re-enable
+    full-text search.  Run this before the previous command
+        sqlite-utils disable-fts db/namesregistry.db names_person
     """
     if elastic: method = 'elastic'
     elif sql: method = 'sql'
