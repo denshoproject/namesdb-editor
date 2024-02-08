@@ -359,8 +359,8 @@ class Person(models.Model):
         )
 
     def __str__(self):
-        return '{} ({})'.format(
-            self.preferred_name, self.nr_id
+        return '{} ({}) ({})'.format(
+            self.preferred_name, self.birth_date, self.nr_id
         )
 
     def admin_url(self):
@@ -479,6 +479,24 @@ class Person(models.Model):
     def revisions(self):
         """List of object Revisions"""
         return Revision.revisions(self, 'nr_id')
+
+    def delete(self, *args, **kwargs):
+        """Delete Person, adding a final Revision noting the deletion
+        """
+        if getattr(self, 'user', None):
+            username = getattr(self, 'user').username
+        # ...or comes from names.cli.load
+        elif kwargs.get('username'):
+            username = kwargs['username']
+        else:
+            username = 'UNKNOWN'
+        ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        r = Revision(
+            content_object=self, username=username, diff='',
+            note=f"{self} deleted by {username} {ts}",
+        )
+        r.save()
+        super(Person, self).delete()
 
     def _make_nr_id(self, username):
         """[Deprecated] Generate a new unique ID
