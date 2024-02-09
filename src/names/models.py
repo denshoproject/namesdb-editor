@@ -16,9 +16,7 @@ from django.utils import timezone
 from names import csvfile,fileio,noidminter
 from namesdb_public.models import Person as ESPerson, FIELDS_PERSON
 from namesdb_public.models import Facility as ESFacility
-from namesdb_public.models import PersonFacility as ESPersonFacility
 from namesdb_public.models import PersonLocation as ESPersonLocation
-from namesdb_public.models import FIELDS_PERSONFACILITY
 from namesdb_public.models import FarRecord as ESFarRecord, FIELDS_FARRECORD
 from namesdb_public.models import WraRecord as ESWraRecord, FIELDS_WRARECORD
 from namesdb_public.models import FarPage as ESFarPage, FIELDS_FARPAGE
@@ -347,7 +345,6 @@ class Person(models.Model):
 #    record_id		blank=1	Record ID	ID of related record
 #    record_type		blank=1	Record Source	Type of related record. e.g., 'far', 'wra' 
     timestamp                     = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
-    facility = models.ManyToManyField(Facility, through='PersonFacility',  related_name='facilities')
     
     class Meta:
         verbose_name = 'Person'
@@ -421,9 +418,6 @@ class Person(models.Model):
                 o.death_date = parser.parse(rowd.pop('death_date_text')).date()
             except parser._parser.ParserError:
                 pass
-        if rowd.get('facility'):
-            f = PersonFacility
-            o.facility = None
         # everything else
         for key,val in rowd.items():
             val = val.strip()
@@ -518,33 +512,6 @@ class Person(models.Model):
                 f'Could not connect to ddr-idservice at {err.request.url}.' \
                 ' Please check settings.'
             )
-
-    @staticmethod
-    def related_facilities():
-        """Build dict of Person->Facility relations
-        """
-        facility_titles = {f.facility_id: f.title for f in Facility.objects.all()}
-        query = """
-            SELECT names_person.nr_id,
-                names_personfacility.facility_id,
-                names_personfacility.entry_date, names_personfacility.exit_date
-            FROM names_person INNER JOIN names_personfacility
-                ON names_person.nr_id = names_personfacility.person_id;
-        """
-        x = {}
-        with connections['names'].cursor() as cursor:
-            cursor.execute(query)
-            for nr_id, facility_id, entry_date, exit_date in cursor.fetchall():
-                if nr_id:
-                    if not x.get(nr_id):
-                        x[nr_id] = []
-                    x[nr_id].append({
-                        'facility_id': facility_id,
-                        'facility_title': facility_titles.get(facility_id, 'UNSPECIFIED'),
-                        'entry_date': entry_date,
-                        'exit_date': exit_date,
-                    })
-        return x
 
     @staticmethod
     def related_farrecords():
@@ -647,10 +614,7 @@ class Person(models.Model):
         d = {'id': self.nr_id}
         for fieldname in FIELDS_PERSON:
             value = None
-            if fieldname == 'facilities':
-                if related['facilities'].get(self.nr_id):
-                    value = related['facilities'][self.nr_id]
-            elif fieldname == 'far_records':
+            if fieldname == 'far_records':
                 if related['far_records'].get(self.nr_id):
                     value = related['far_records'][self.nr_id]
             elif fieldname == 'wra_records':
@@ -675,91 +639,6 @@ class Person(models.Model):
         return es_class.from_dict(data['nr_id'], data).save(
             index=ds.index_name('person'), using=ds.es
         )
-
-
-class PersonFacility(models.Model):
-    person     = models.ForeignKey(Person, on_delete=models.DO_NOTHING)
-    facility   = models.ForeignKey(Facility, on_delete=models.DO_NOTHING)
-    entry_date = models.DateField(blank=1, null=1, verbose_name='Facility Entry Date', help_text='Date of entry to detention facility')
-    exit_date  = models.DateField(blank=1, null=1, verbose_name='Facility Exit Date',  help_text='Date of exit from detention facility')
-
-    def __repr__(self):
-        return f'<{self.__class__.__name__}(person={self.person}, facility={self.facility})>'
-
-    def __str__(self):
-        return '({} {})'.format(
-            self.person, self.facility
-        )
-
-    @staticmethod
-    def combo_id(person_id, facility_id):
-        return f'{person_id}:{facility_id}'
-
-    @staticmethod
-    def prep_data():
-        """Prepare data for loading CSV full of PersonFacility data
-        """
-        return {
-            'facilities': {
-                f.facility_id:
-                f for f in Facility.objects.all()
-            },
-            'personfacilities': {
-                pf.combo_id(pf.person_id, pf.facility_id): pf
-                for pf in PersonFacility.objects.all()
-            },
-        }
-
-    @staticmethod
-    def load_rowd(rowd, prepped_data):
-        """Given a rowd dict from a CSV, return a PersonFacility object
-        """
-        def normalize_fieldname(rowd, data, fieldname, choices):
-            for field in choices:
-                if rowd.get(field):
-                    data[fieldname] = rowd.get(field)
-        data = {}
-        normalize_fieldname(rowd, data, 'person_id',   ['nr_id', 'person_id'])
-        normalize_fieldname(rowd, data, 'facility_id', ['facility', 'facility_id'])
-        normalize_fieldname(rowd, data, 'entry_date',  ['facility_entry_date', 'entry_date'])
-        normalize_fieldname(rowd, data, 'exit_date',   ['facility_exit_date', 'exit_date'])
-        # update or new
-        try:
-            f = prepped_data['facilities'][data['facility_id']]
-        except KeyError:  # some rows are missing facility_id
-            return None,prepped_data
-        p = Person.objects.get(nr_id=data['person_id'])
-        try:
-            pfid = PersonFacility.combo_id(p.nr_id, f.facility_id)
-            pf = prepped_data['personfacilities'][pfid]
-        except KeyError:
-            pf = PersonFacility(person=p, facility=f)
-            pfid = PersonFacility.combo_id(p.nr_id, f.facility_id)
-        for key,val in data.items():
-            if key in ['entry_date', 'exit_date']:
-                try:
-                    val = parser.parse(val)
-                    setattr(pf, key, val)
-                except parser._parser.ParserError:
-                    pass
-        prepped_data[pfid] = pf
-        return pf,prepped_data
-
-    def save(self, *args, **kwargs):
-        """Save PersonFacility"""
-        super(PersonFacility, self).save()
-
-    def dict(self, n=None):
-        """JSON-serializable dict
-        """
-        d = {}
-        if n:
-            d['n'] = n
-        for fieldname in FIELDS_PERSONFACILITY:
-            if getattr(self, fieldname):
-                value = getattr(self, fieldname)
-                d[fieldname] = value
-        return d
 
 
 FIELDS_PERSONLOCATION = [
@@ -844,7 +723,7 @@ with open('./db/namesdb-kyuzo-YYYYMMDD-HHMM-sorts.jsonl', 'w') as f:
 python src/manage.py loaddata --database=names ./db/namesdb-kyuzo-YYYYMMDD-HHMM-sorts.jsonl
 
     """
-    person      = models.ForeignKey(Person, on_delete=models.DO_NOTHING)
+    person      = models.ForeignKey(Person, on_delete=models.CASCADE)
     location    = models.ForeignKey(Location, on_delete=models.DO_NOTHING)
     facility    = models.ForeignKey(Facility, null=1, blank=1, on_delete=models.DO_NOTHING, verbose_name='Facility', help_text='Facility from Densho CV (if applicable)')
     facility_address = models.CharField(max_length=255, blank=1, verbose_name='Facility Address', help_text='Address inside facility (if applicable)')
@@ -979,7 +858,7 @@ class FarRecord(models.Model):
     camp_address_room       = models.CharField(max_length=255, blank=1, verbose_name='Camp Address Room', help_text='Room identifier of camp address')
     reference               = models.CharField(max_length=255, blank=1, verbose_name='Internal FAR Reference', help_text='Pointer to another row in the roster; page number in source pdf and the original order in the consolidated roster for the camp')
     original_notes          = models.CharField(max_length=255, blank=1, verbose_name='Original Notes', help_text='Notes from original statistics section recorder, often a reference to another name in the roster')
-    person = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
+    person = models.ForeignKey(Person, on_delete=models.SET_NULL, blank=1, null=1)
     timestamp               = models.DateTimeField(auto_now_add=True, verbose_name='Last Updated')
 
     class Meta:
@@ -1292,7 +1171,7 @@ class WraRecord(models.Model):
     occupqual3        = models.CharField(max_length=255, blank=1, verbose_name='Tertiary qualified occupation', help_text='Tertiary qualified occupation; coded')
     occuppotn1        = models.CharField(max_length=255, blank=1, verbose_name='Primary potential occupation', help_text='Primary potential occupation; coded')
     occuppotn2        = models.CharField(max_length=255, blank=1, verbose_name='Secondary potential occupation', help_text='Secondary potential occupation; coded')
-    person = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
+    person = models.ForeignKey(Person, on_delete=models.SET_NULL, blank=1, null=1)
     timestamp         = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
 
     class Meta:
@@ -1546,7 +1425,7 @@ class IreiRecord(models.Model):
     CREATE INDEX "names_ireirecord_person_id_876c7772" ON "names_ireirecord" ("person_id");
     """
     irei_id   = models.CharField(max_length=255, primary_key=1, verbose_name='Irei ID')
-    person    = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
+    person    = models.ForeignKey(Person, on_delete=models.SET_NULL, blank=1, null=1)
     year       = models.CharField(max_length=255, blank=1, verbose_name='Birth year')
     birthday   = models.CharField(max_length=255, blank=1, verbose_name='Birthday')
     birthdate  = models.DateField(max_length=255, blank=1, verbose_name='Birth date')
@@ -1893,7 +1772,6 @@ MODEL_CLASSES = {
     'facility': Facility,
     'location': Location,
     'person': Person,
-    'personfacility': PersonFacility,
     'personlocation': PersonLocation,
     'farrecord': FarRecord,
     'wrarecord': WraRecord,

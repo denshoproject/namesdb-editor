@@ -527,7 +527,6 @@ def post(hosts, limit, test, debug, model):
     click.echo('Gathering relations')
     related = {}
     if model == 'person':
-        related['facilities'] = models.Person.related_facilities()
         related['far_records'] = models.Person.related_farrecords()
         related['wra_records'] = models.Person.related_wrarecords()
         related['family'] = models.Person.related_family()
