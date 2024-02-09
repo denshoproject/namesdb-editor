@@ -8,6 +8,7 @@ db/
 dist/
 *.egg-info/
 media/
+ireizo_public
 namesdb-public/
 namesdb_public
 venv/
