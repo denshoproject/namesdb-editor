@@ -502,13 +502,17 @@ TEST_DATA = {
 
 @namesdb.command()
 @click.option('--hosts','-H', envvar='ES_HOST', help='Elasticsearch hosts.')
-@click.option('--limit','-l', default=None, help='Limit number of records.')
+@click.option('--limit','-l', default=200_000, help='Limit number of records.')
+@click.option('--id','-id', default=None, help='Post the specified ID.')
+@click.option('--file','-f', default=None, help='Post records with IDs from file.')
+@click.option('--since','-s', default=None, help='Post records updated since date.')
 @click.option('--test','-T', is_flag=True, default=False, help='Post test data.')
 @click.option('--debug','-d', is_flag=True, default=False)
 @click.argument('model')
-def post(hosts, limit, test, debug, model):
+def post(hosts, limit, id, file, since, test, debug, model):
     """Post data from SQL database to Elasticsearch.
     """
+    # check inputs
     MODELS = [
         'person', 'farrecord', 'far', 'wrarecord', 'wra', 'farpage',
         'personlocation', 'facility', 'location',
@@ -521,9 +525,24 @@ def post(hosts, limit, test, debug, model):
     ds = docstore.DocstoreManager(
         models.INDEX_PREFIX, hosts_index(hosts), settings
     )
+    if file:
+        file = Path(file)
+        if not (file.exists() and file.is_file() and os.access(file, os.R_OK)):
+            click.echo(f'ERROR: Not a readable file: "{file}".')
+            sys.exit(1)
+    if since:
+        if not model in ['person','farrecord','wrarecord','ireirecord']:
+            click.echo(f'ERROR: --since not implemented for {model}.')
+            sys.exit(1)
+        try:
+            since = parser.parse(since)
+        except parser._parser.ParserError as err:
+            click.echo(f"ERROR: Bad arg for --since: {err}")
+            sys.exit(1)
     if limit:
         limit = int(limit)
-    
+
+    # load related info
     click.echo('Gathering relations')
     related = {}
     if model == 'person':
@@ -543,7 +562,8 @@ def post(hosts, limit, test, debug, model):
         related['persons'] = models.PersonLocation.related_persons()
         related['locations'] = models.PersonLocation.related_locations()
         related['facilities'] = models.PersonLocation.related_facilities()
-    
+
+    # select records to post
     click.echo('Loading from database')
     sql_class = models.MODEL_CLASSES[model]
     # TODO stretching this metaphor too far - revise
@@ -566,10 +586,42 @@ def post(hosts, limit, test, debug, model):
             )
         else:
             print(f"ERR test in {TEST_DATA.keys()}"); sys.exit(1)
-    elif limit:
-        records = sql_class.objects.all()[:limit]
     else:
-        records = sql_class.objects.all()
+        # specific record
+        if id:
+            if model == 'person':
+                records = sql_class.objects.filter(nr_id=id)[:limit]
+            elif model == 'personlocation':
+                records = sql_class.objects.filter(person_id=id)[:limit]
+            elif model == 'farrecord':
+                records = sql_class.objects.filter(far_record_id=id)[:limit]
+            elif model == 'wrarecord':
+                records = sql_class.objects.filter(wra_record_id=id)[:limit]
+            elif model == 'ireirecord':
+                records = sql_class.objects.filter(irei_id=id)[:limit]
+        # records with IDs in FILE
+        elif file:
+            with file.open('r') as f:
+                ids = [line.strip() for line in f.readlines()]
+            if model == 'person':
+                records = sql_class.objects.filter(nr_id__in=ids)
+            elif model == 'personlocation':
+                records = sql_class.objects.filter(person_id__in=ids)
+            elif model == 'farrecord':
+                records = sql_class.objects.filter(far_record_id__in=ids)
+            elif model == 'wrarecord':
+                records = sql_class.objects.filter(wra_record_id__in=ids)
+            elif model == 'ireirecord':
+                records = sql_class.objects.filter(irei_id__in=ids)
+        # records updated since DATE(TIME)
+        elif since:
+            records = sql_class.objects.filter(timestamp__gte=since)[:limit]
+        # everything
+        else:
+            records = sql_class.objects.all()[:limit]
+
+    # now post them
+    # TODO refactor use elasticsearch.helpers.bulk
     failed = []
     for record in tqdm(
         records, desc='Writing to Elasticsearch', ascii=True, unit='record'
@@ -713,7 +765,7 @@ def exportdb(debug):
     click.echo(dst)
 
 def model_w_abbreviations(model):
-    if model in ['far','wra']:
+    if model in ['far','wra','irei']:
         # enable using 'far','wra' abbreviations
         model = f'{model}record'
     return model
