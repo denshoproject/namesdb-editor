@@ -723,7 +723,7 @@ with open('./db/namesdb-kyuzo-YYYYMMDD-HHMM-sorts.jsonl', 'w') as f:
 python src/manage.py loaddata --database=names ./db/namesdb-kyuzo-YYYYMMDD-HHMM-sorts.jsonl
 
     """
-    person      = models.ForeignKey(Person, on_delete=models.DO_NOTHING)
+    person      = models.ForeignKey(Person, on_delete=models.CASCADE)
     location    = models.ForeignKey(Location, on_delete=models.DO_NOTHING)
     facility    = models.ForeignKey(Facility, null=1, blank=1, on_delete=models.DO_NOTHING, verbose_name='Facility', help_text='Facility from Densho CV (if applicable)')
     facility_address = models.CharField(max_length=255, blank=1, verbose_name='Facility Address', help_text='Address inside facility (if applicable)')
@@ -858,7 +858,7 @@ class FarRecord(models.Model):
     camp_address_room       = models.CharField(max_length=255, blank=1, verbose_name='Camp Address Room', help_text='Room identifier of camp address')
     reference               = models.CharField(max_length=255, blank=1, verbose_name='Internal FAR Reference', help_text='Pointer to another row in the roster; page number in source pdf and the original order in the consolidated roster for the camp')
     original_notes          = models.CharField(max_length=255, blank=1, verbose_name='Original Notes', help_text='Notes from original statistics section recorder, often a reference to another name in the roster')
-    person = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
+    person = models.ForeignKey(Person, on_delete=models.SET_NULL, blank=1, null=1)
     timestamp               = models.DateTimeField(auto_now_add=True, verbose_name='Last Updated')
 
     class Meta:
@@ -1171,7 +1171,7 @@ class WraRecord(models.Model):
     occupqual3        = models.CharField(max_length=255, blank=1, verbose_name='Tertiary qualified occupation', help_text='Tertiary qualified occupation; coded')
     occuppotn1        = models.CharField(max_length=255, blank=1, verbose_name='Primary potential occupation', help_text='Primary potential occupation; coded')
     occuppotn2        = models.CharField(max_length=255, blank=1, verbose_name='Secondary potential occupation', help_text='Secondary potential occupation; coded')
-    person = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
+    person = models.ForeignKey(Person, on_delete=models.SET_NULL, blank=1, null=1)
     timestamp         = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
 
     class Meta:
@@ -1425,7 +1425,7 @@ class IreiRecord(models.Model):
     CREATE INDEX "names_ireirecord_person_id_876c7772" ON "names_ireirecord" ("person_id");
     """
     irei_id   = models.CharField(max_length=255, primary_key=1, verbose_name='Irei ID')
-    person    = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
+    person    = models.ForeignKey(Person, on_delete=models.SET_NULL, blank=1, null=1)
     year       = models.CharField(max_length=255, blank=1, verbose_name='Birth year')
     birthday   = models.CharField(max_length=255, blank=1, verbose_name='Birthday')
     birthdate  = models.DateField(max_length=255, blank=1, verbose_name='Birth date')
