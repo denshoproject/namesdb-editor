@@ -80,6 +80,13 @@ if not (NOIDMINTER_USERNAME and NOIDMINTER_PASSWORD):
     raise Exception('Set ddr-idservice username and/or password in settings.')
 NOIDMINTER_BATCH_SIZE = config.get('noidminter', 'batch_size')
 
+DDR_UI_URL = config.get('ddrpublic', 'ddr_ui_url')
+DDR_API_URL = config.get('ddrpublic', 'ddr_api_url')
+DDR_API_TIMEOUT = int(config.get('ddrpublic', 'ddr_api_timeout'))
+DDR_API_USERNAME = config.get('ddrpublic', 'ddr_api_username')
+DDR_API_PASSWORD = config.get('ddrpublic', 'ddr_api_password')
+
+
 # ----------------------------------------------------------------------
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
@@ -113,12 +120,27 @@ INSTALLED_APPS = [
     'editor',
     'names',
     'namesdb_public',
+    'ireizo_public',
 ]
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        # BasicAuthentication breaks the API when behind HTTP Basic auth
+        # (i.e. in dev.stage), causing it to require login for all views.
+        #'rest_framework.authentication.BasicAuthentication',
+        # Password is still required for Django admin.
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+}
+
+NAMESDB_PUBLIC_BASE_DIR = Path('/opt/namesdb-public/namessite/templates')
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [
+            BASE_DIR / 'templates',
+            NAMESDB_PUBLIC_BASE_DIR,
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

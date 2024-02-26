@@ -4,6 +4,7 @@ SHELL = /bin/bash
 
 SRC_REPO_EDITOR=https://github.com/denshoproject/namesdb-editor
 SRC_REPO_PUBLIC=https://github.com/denshoproject/namesdb-public.git
+SRC_REPO_IREIZO=https://github.com/denshoproject/ireizo-public.git
 
 # Release name e.g. jessie
 DEBIAN_CODENAME := $(shell lsb_release -sc)
@@ -20,6 +21,7 @@ endif
 INSTALL_BASE=/opt
 INSTALLDIR=$(INSTALL_BASE)/namesdb-editor
 INSTALL_PUBLIC=$(INSTALL_BASE)/namesdb-public
+INSTALL_IREIZO=$(INSTALL_BASE)/ireizo-public
 APPDIR=$(INSTALLDIR)/src
 REQUIREMENTS=$(INSTALLDIR)/requirements.txt
 PIP_CACHE_DIR=$(INSTALL_BASE)/pip-cache
@@ -155,13 +157,13 @@ install-setuptools: install-virtualenv
 	pip install -U bpython setuptools
 
 
-get-app: get-namesdb-editor get-namesdb-public
+get-app: get-namesdb-editor get-namesdb-public get-ireizo-public
 
-install-app: install-namesdb-editor install-namesdb-public
+install-app: install-namesdb-editor install-namesdb-public install-ireizo-public
 
-uninstall-app: uninstall-namesdb-editor uninstall-namesdb-public
+uninstall-app: uninstall-namesdb-editor uninstall-namesdb-public uninstall-ireizo-public
 
-clean-app: clean-namesdb-editor clean-namesdb-public
+clean-app: clean-namesdb-editor clean-namesdb-public clean-ireizo-public
 
 
 get-namesdb-editor:
@@ -199,6 +201,7 @@ git-safe-dir:
 	@echo "git-safe-dir -----------------------------------------------------------"
 	sudo -u ddr git config --global --add safe.directory $(INSTALLDIR)
 	sudo -u ddr git config --global --add safe.directory $(INSTALL_PUBLIC)
+	sudo -u ddr git config --global --add safe.directory $(INSTALL_IREIZO)
 
 setup-names-editor:
 	-rm $(APPDIR)/namesdb_public/namesdb_public
@@ -250,6 +253,31 @@ clean-namesdb-public:
 	-rm -Rf $(INSTALL_PUBLIC)/build
 	-rm -Rf $(INSTALL_PUBLIC)/namesdb.egg-info
 	-rm -Rf $(INSTALL_PUBLIC)/dist
+
+
+get-ireizo-public:
+	@echo ""
+	@echo "get-ireizo-public -------------------------------------------------------"
+	git status | grep "On branch"
+	if test -d $(INSTALL_IREIZO); \
+	then cd $(INSTALL_IREIZO) && git pull; \
+	else cd $(INSTALL_BASE) && git clone $(SRC_REPO_IREIZO); \
+	fi
+
+install-ireizo-public: install-virtualenv
+	@echo ""
+	@echo "install ireizo-public -------------------------------------------------"
+	-rm -Rf $(APPDIR)/ireizo_public
+	ln -s $(INSTALL_IREIZO)/ireizo_public $(APPDIR)/ireizo_public
+# 	source $(VIRTUALENV)/bin/activate; \
+# 	pip install -U -r $(INSTALL_IREIZO)/requirements.txt
+
+uninstall-ireizo-public: install-virtualenv
+
+clean-ireizo-public:
+	-rm -Rf $(INSTALL_IREIZO)/build
+	-rm -Rf $(INSTALL_IREIZO)/namesdb.egg-info
+	-rm -Rf $(INSTALL_IREIZO)/dist
 
 
 clean-pip:

@@ -1,9 +1,9 @@
-from datetime import datetime
+from datetime import datetime, date
 import difflib
 import json
 
 from dateutil import parser
-from requests.exceptions import ConnectionError
+from httpx import RequestError
 from tabulate import tabulate
 
 from django.conf import settings
@@ -15,12 +15,14 @@ from django.utils import timezone
 
 from names import csvfile,fileio,noidminter
 from namesdb_public.models import Person as ESPerson, FIELDS_PERSON
-from namesdb_public.models import PersonFacility as ESPersonFacility
-from namesdb_public.models import FIELDS_PERSONFACILITY
+from namesdb_public.models import Facility as ESFacility
+from namesdb_public.models import PersonLocation as ESPersonLocation
 from namesdb_public.models import FarRecord as ESFarRecord, FIELDS_FARRECORD
 from namesdb_public.models import WraRecord as ESWraRecord, FIELDS_WRARECORD
 from namesdb_public.models import FarPage as ESFarPage, FIELDS_FARPAGE
 from namesdb_public.models import FIELDS_BY_MODEL
+from ireizo_public.models import IreiRecord as ESIreiRecord, FIELDS_IREIRECORD
+
 
 INDEX_PREFIX = 'names'
 
@@ -29,7 +31,10 @@ ELASTICSEARCH_CLASSES = {
         {'doctype': 'person', 'class': ESPerson},
         {'doctype': 'farrecord', 'class': ESFarRecord},
         {'doctype': 'wrarecord', 'class': ESWraRecord},
+        {'doctype': 'ireirecord', 'class': ESIreiRecord},
         {'doctype': 'farpage', 'class': ESFarPage},
+        {'doctype': 'facility', 'class': ESFacility},
+        {'doctype': 'personlocation', 'class': ESPersonLocation},
     ]
 }
 
@@ -37,7 +42,10 @@ ELASTICSEARCH_CLASSES_BY_MODEL = {
     'person': ESPerson,
     'farrecord': ESFarRecord,
     'wrarecord': ESWraRecord,
+    'ireirecord': ESIreiRecord,
     'farpage': ESFarPage,
+    'facility': ESFacility,
+    'personlocation': ESPersonLocation,
 }
 
 
@@ -67,6 +75,18 @@ class NamesRouter:
             return db == 'names'
         return None
 
+
+FIELDS_FACILITY = [
+    'facility_id',
+    'facility_type',
+    'title',
+    'location_label',
+    'location_lat',
+    'location_lng',
+    'tgn_id',
+    'encyc_title',
+    'encyc_url',
+]
 
 class Facility(models.Model):
     facility_id   = models.CharField(max_length=30, primary_key=True, verbose_name='Facility ID',   help_text='ID of facility where detained')
@@ -160,6 +180,26 @@ class Facility(models.Model):
     def save(self, *args, **kwargs):
         """Save Facility, ignoring usernames and notes"""
         super(Facility, self).save()
+
+    def dict(self, related):
+        """JSON-serializable dict
+        """
+        d = {'id': self.facility_id}
+        for fieldname in FIELDS_FACILITY:
+            value = None
+            if hasattr(self, fieldname):
+                value = getattr(self, fieldname)
+            d[fieldname] = value
+        return d
+
+    def post(self, related, ds):
+        """Post Facility record to Elasticsearch
+        """
+        data = self.dict(related)
+        es_class = ELASTICSEARCH_CLASSES_BY_MODEL['facility']
+        return es_class.from_dict(data['facility_id'], data).save(
+            index=ds.index_name('facility'), using=ds.es
+        )
 
 
 FIELDS_LOCATION = [
@@ -305,7 +345,6 @@ class Person(models.Model):
 #    record_id		blank=1	Record ID	ID of related record
 #    record_type		blank=1	Record Source	Type of related record. e.g., 'far', 'wra' 
     timestamp                     = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
-    facility = models.ManyToManyField(Facility, through='PersonFacility',  related_name='facilities')
     
     class Meta:
         verbose_name = 'Person'
@@ -317,8 +356,8 @@ class Person(models.Model):
         )
 
     def __str__(self):
-        return '{} ({})'.format(
-            self.preferred_name, self.nr_id
+        return '{} ({}) ({})'.format(
+            self.preferred_name, self.birth_date, self.nr_id
         )
 
     def admin_url(self):
@@ -379,9 +418,6 @@ class Person(models.Model):
                 o.death_date = parser.parse(rowd.pop('death_date_text')).date()
             except parser._parser.ParserError:
                 pass
-        if rowd.get('facility'):
-            f = PersonFacility
-            o.facility = None
         # everything else
         for key,val in rowd.items():
             val = val.strip()
@@ -434,6 +470,28 @@ class Person(models.Model):
             )
             r.save()
 
+    def revisions(self):
+        """List of object Revisions"""
+        return Revision.revisions(self, 'nr_id')
+
+    def delete(self, *args, **kwargs):
+        """Delete Person, adding a final Revision noting the deletion
+        """
+        if getattr(self, 'user', None):
+            username = getattr(self, 'user').username
+        # ...or comes from names.cli.load
+        elif kwargs.get('username'):
+            username = kwargs['username']
+        else:
+            username = 'UNKNOWN'
+        ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        r = Revision(
+            content_object=self, username=username, diff='',
+            note=f"{self} deleted by {username} {ts}",
+        )
+        r.save()
+        super(Person, self).delete()
+
     def _make_nr_id(self, username):
         """[Deprecated] Generate a new unique ID
         """
@@ -449,49 +507,21 @@ class Person(models.Model):
         """
         try:
             return noidminter.get_noids()[0]
-        except ConnectionError:
+        except RequestError as err:
             raise Exception(
-                f'Could not connect to ddr-idservice at {settings.NOIDMINTER_URL}.' \
+                f'Could not connect to ddr-idservice at {err.request.url}.' \
                 ' Please check settings.'
             )
-
-    def revisions(self):
-        """List of object Revisions
-        """
-        return Revision.objects.filter(model='persopn', record_id=self.nr_id)
-
-    @staticmethod
-    def related_facilities():
-        """Build dict of Person->Facility relations
-        """
-        query = """
-            SELECT names_person.nr_id,
-                names_personfacility.facility_id,
-                names_personfacility.entry_date, names_personfacility.exit_date
-            FROM names_person INNER JOIN names_personfacility
-                ON names_person.nr_id = names_personfacility.person_id;
-        """
-        x = {}
-        with connections['names'].cursor() as cursor:
-            cursor.execute(query)
-            for nr_id, facility_id, entry_date, exit_date in cursor.fetchall():
-                if nr_id:
-                    if not x.get(nr_id):
-                        x[nr_id] = []
-                    x[nr_id].append({
-                        'facility_id': facility_id,
-                        'entry_date': entry_date,
-                        'exit_date': exit_date,
-                    })
-        return x
 
     @staticmethod
     def related_farrecords():
         """Build dict of Person->FarRecord relations
         """
+        facility_titles = {f.facility_id: f.title for f in Facility.objects.all()}
         query = """
             SELECT names_person.nr_id,
                    names_farrecord.far_record_id,
+                   names_farrecord.facility,
                    names_farrecord.last_name, names_farrecord.first_name
             FROM names_farrecord INNER JOIN names_person
             ON names_farrecord.person_id = names_person.nr_id;
@@ -499,12 +529,15 @@ class Person(models.Model):
         x = {}
         with connections['names'].cursor() as cursor:
             cursor.execute(query)
-            for nr_id,far_record_id,last_name,first_name in cursor.fetchall():
+            for nr_id,far_record_id,facility_id,last_name,first_name in cursor.fetchall():
                 if nr_id:
                     if not x.get(nr_id):
                         x[nr_id] = []
+                    facility_title = facility_titles.get(facility_id, 'UNSPECIFIED')
                     x[nr_id].append({
                         'far_record_id': far_record_id,
+                        'facility_id': facility_id,
+                        'facility_title': facility_title,
                         'last_name': last_name,
                         'first_name': first_name,
                     })
@@ -514,9 +547,11 @@ class Person(models.Model):
     def related_wrarecords():
         """Build dict of Person->WraRecord relations
         """
+        facility_titles = {f.facility_id: f.title for f in Facility.objects.all()}
         query = """
             SELECT names_person.nr_id,
                    names_wrarecord.wra_record_id,
+                   names_wrarecord.facility,
                    names_wrarecord.lastname, names_wrarecord.firstname
             FROM names_wrarecord INNER JOIN names_person
             ON names_wrarecord.person_id = names_person.nr_id;
@@ -524,12 +559,15 @@ class Person(models.Model):
         x = {}
         with connections['names'].cursor() as cursor:
             cursor.execute(query)
-            for nr_id,wra_record_id,lastname,firstname in cursor.fetchall():
+            for nr_id,wra_record_id,facility_id,lastname,firstname in cursor.fetchall():
                 if nr_id:
                     if not x.get(nr_id):
                         x[nr_id] = []
+                    facility_title = facility_titles.get(facility_id, 'UNSPECIFIED')
                     x[nr_id].append({
                         'wra_record_id': wra_record_id,
+                        'facility_id': facility_id,
+                        'facility_title': facility_title,
                         'lastname': lastname,
                         'firstname': firstname,
                     })
@@ -540,20 +578,34 @@ class Person(models.Model):
         """Build dict of Person wra_family_no->nr_id relations
         """
         query = """
-            SELECT names_person.wra_family_no, names_person.nr_id,
-                   names_person.preferred_name
+            SELECT names_person.wra_family_no,
+                   names_person.nr_id,
+                   names_person.preferred_name,
+                   names_person.birth_date,
+                   names_person.wra_individual_no,
+                   names_person.gender
             FROM names_person;
         """
         x = {}
         with connections['names'].cursor() as cursor:
             cursor.execute(query)
-            for wra_family_no,nr_id,preferred_name in cursor.fetchall():
+            for row in cursor.fetchall():
+                wra_family_no,nr_id,preferred_name,birth_date,wra_individual_no,gender = row
                 if not x.get(wra_family_no):
                     x[wra_family_no] = []
-                x[wra_family_no].append({
+                # redact exact birth date
+                try:
+                    birth_year = birth_date.year
+                except:
+                    birth_year = None
+                data = {
                     'nr_id': nr_id,
                     'preferred_name': preferred_name,
-                })
+                    'birth_year': birth_year,
+                    'wra_individual_no': wra_individual_no,
+                    'gender': gender,
+                }
+                x[wra_family_no].append(data)
         return x
 
     def dict(self, related):
@@ -562,17 +614,14 @@ class Person(models.Model):
         d = {'id': self.nr_id}
         for fieldname in FIELDS_PERSON:
             value = None
-            if fieldname == 'facilities':
-                if related['facilities'].get(self.nr_id):
-                    value = related['facilities'][self.nr_id]
-            elif fieldname == 'far_records':
+            if fieldname == 'far_records':
                 if related['far_records'].get(self.nr_id):
                     value = related['far_records'][self.nr_id]
             elif fieldname == 'wra_records':
                 if related['wra_records'].get(self.nr_id):
                     value = related['wra_records'][self.nr_id]
             else:
-                if getattr(self, fieldname):
+                if hasattr(self, fieldname):
                     value = getattr(self, fieldname)
             d[fieldname] = value
         d['family'] = []
@@ -592,90 +641,17 @@ class Person(models.Model):
         )
 
 
-class PersonFacility(models.Model):
-    person     = models.ForeignKey(Person, on_delete=models.DO_NOTHING)
-    facility   = models.ForeignKey(Facility, on_delete=models.DO_NOTHING)
-    entry_date = models.DateField(blank=1, null=1, verbose_name='Facility Entry Date', help_text='Date of entry to detention facility')
-    exit_date  = models.DateField(blank=1, null=1, verbose_name='Facility Exit Date',  help_text='Date of exit from detention facility')
-
-    def __repr__(self):
-        return f'<{self.__class__.__name__}(person={self.person}, facility={self.facility})>'
-
-    def __str__(self):
-        return '({} {})'.format(
-            self.person, self.facility
-        )
-
-    @staticmethod
-    def combo_id(person_id, facility_id):
-        return f'{person_id}:{facility_id}'
-
-    @staticmethod
-    def prep_data():
-        """Prepare data for loading CSV full of PersonFacility data
-        """
-        return {
-            'facilities': {
-                f.facility_id:
-                f for f in Facility.objects.all()
-            },
-            'personfacilities': {
-                pf.combo_id(pf.person_id, pf.facility_id): pf
-                for pf in PersonFacility.objects.all()
-            },
-        }
-
-    @staticmethod
-    def load_rowd(rowd, prepped_data):
-        """Given a rowd dict from a CSV, return a PersonFacility object
-        """
-        def normalize_fieldname(rowd, data, fieldname, choices):
-            for field in choices:
-                if rowd.get(field):
-                    data[fieldname] = rowd.get(field)
-        data = {}
-        normalize_fieldname(rowd, data, 'person_id',   ['nr_id', 'person_id'])
-        normalize_fieldname(rowd, data, 'facility_id', ['facility', 'facility_id'])
-        normalize_fieldname(rowd, data, 'entry_date',  ['facility_entry_date', 'entry_date'])
-        normalize_fieldname(rowd, data, 'exit_date',   ['facility_exit_date', 'exit_date'])
-        # update or new
-        try:
-            f = prepped_data['facilities'][data['facility_id']]
-        except KeyError:  # some rows are missing facility_id
-            return None,prepped_data
-        p = Person.objects.get(nr_id=data['person_id'])
-        try:
-            pfid = PersonFacility.combo_id(p.nr_id, f.facility_id)
-            pf = prepped_data['personfacilities'][pfid]
-        except KeyError:
-            pf = PersonFacility(person=p, facility=f)
-            pfid = PersonFacility.combo_id(p.nr_id, f.facility_id)
-        for key,val in data.items():
-            if key in ['entry_date', 'exit_date']:
-                try:
-                    val = parser.parse(val)
-                    setattr(pf, key, val)
-                except parser._parser.ParserError:
-                    pass
-        prepped_data[pfid] = pf
-        return pf,prepped_data
-
-    def save(self, *args, **kwargs):
-        """Save PersonFacility"""
-        super(PersonFacility, self).save()
-
-    def dict(self, n=None):
-        """JSON-serializable dict
-        """
-        d = {}
-        if n:
-            d['n'] = n
-        for fieldname in FIELDS_PERSONFACILITY:
-            if getattr(self, fieldname):
-                value = getattr(self, fieldname)
-                d[fieldname] = value
-        return d
-
+FIELDS_PERSONLOCATION = [
+    'person',
+    'location',
+    'facility',
+    'facility_address',
+    'entry_date',
+    'exit_date',
+    'sort_start',
+    'sort_end',
+    'notes',
+]
 
 class PersonLocation(models.Model):
     """
@@ -747,7 +723,7 @@ with open('./db/namesdb-kyuzo-YYYYMMDD-HHMM-sorts.jsonl', 'w') as f:
 python src/manage.py loaddata --database=names ./db/namesdb-kyuzo-YYYYMMDD-HHMM-sorts.jsonl
 
     """
-    person      = models.ForeignKey(Person, on_delete=models.DO_NOTHING)
+    person      = models.ForeignKey(Person, on_delete=models.CASCADE)
     location    = models.ForeignKey(Location, on_delete=models.DO_NOTHING)
     facility    = models.ForeignKey(Facility, null=1, blank=1, on_delete=models.DO_NOTHING, verbose_name='Facility', help_text='Facility from Densho CV (if applicable)')
     facility_address = models.CharField(max_length=255, blank=1, verbose_name='Facility Address', help_text='Address inside facility (if applicable)')
@@ -764,17 +740,86 @@ python src/manage.py loaddata --database=names ./db/namesdb-kyuzo-YYYYMMDD-HHMM-
     def __repr__(self):
         return f'<{self.__class__.__name__} {self.person_id} {self.location} {self.sort_start} {self.sort_end}>'
 
-    def dict(self, n=None):
+    def related_persons():
+        """dict of Person info by nr_id
+        """
+        return {
+            person.nr_id: {
+                'nr_id': person.nr_id,
+                'preferred_name': person.preferred_name,
+            }
+            for person in Person.objects.all()
+        }
+
+    def related_locations():
+        """dict of Person info by id
+        """
+        return {
+            str(location.id): {
+                'lat': location.lat,
+                'lng': location.lng,
+                'address': location.address,
+                'address_components': location.address_components,
+                'facility_id': location.facility_id,
+            }
+            for location in Location.objects.all()
+        }
+
+    def related_facilities():
+        """dict of Facility info by id
+        """
+        return {
+            facility.facility_id: {
+                fieldname: getattr(facility, fieldname, None)
+                for fieldname in FIELDS_FACILITY
+            }
+            for facility in Facility.objects.all()
+        }
+
+    def dict(self, related):
         """JSON-serializable dict
         """
-        d = {}
-        if n:
-            d['n'] = n
-        for fieldname in FIELDS_PERSONLOCATION:
-            if getattr(self, fieldname):
-                value = getattr(self, fieldname)
-                d[fieldname] = value
-        return d
+        # get person,location values from related instead of database
+        person = related['persons'][self.person_id]
+        location = related['locations'][self.location_id]
+        facility = related['facilities'].get(self.facility_id, {})
+        data = {
+            'id': PersonLocation._make_id(
+                self.person_id, self.location_id, self.entry_date
+            ),
+            'person_id': self.person_id,
+            'person_name': person['preferred_name'],
+            'location_id': self.location_id,
+            'lat': location['lat'],
+            'lng': location['lng'],
+            'address': location['address'],
+            'address_components': location['address_components'],
+            'facility_id': location['facility_id'],
+            'facility_name': None,
+            'entry_date': self.entry_date,
+            'exit_date': self.exit_date,
+        }
+        if facility:
+            data['facility_name'] = facility['title']
+        return data
+
+    @staticmethod
+    def _make_id(person_id, location_id, entry_date=''):
+        if entry_date:
+            if isinstance(entry_date, date):
+                entry_date = entry_date.strftime('%Y%m%d')
+        else:
+            entry_date=''
+        return '_'.join([person_id, str(location_id), entry_date])
+
+    def post(self, related, ds):
+        """Post FarRecord to Elasticsearch
+        """
+        data = self.dict(related)
+        es_class = ELASTICSEARCH_CLASSES_BY_MODEL['personlocation']
+        return es_class.from_dict(data['id'], data).save(
+            index=ds.index_name('personlocation'), using=ds.es
+        )
 
 
 class FarRecord(models.Model):
@@ -813,7 +858,7 @@ class FarRecord(models.Model):
     camp_address_room       = models.CharField(max_length=255, blank=1, verbose_name='Camp Address Room', help_text='Room identifier of camp address')
     reference               = models.CharField(max_length=255, blank=1, verbose_name='Internal FAR Reference', help_text='Pointer to another row in the roster; page number in source pdf and the original order in the consolidated roster for the camp')
     original_notes          = models.CharField(max_length=255, blank=1, verbose_name='Original Notes', help_text='Notes from original statistics section recorder, often a reference to another name in the roster')
-    person = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
+    person = models.ForeignKey(Person, on_delete=models.SET_NULL, blank=1, null=1)
     timestamp               = models.DateTimeField(auto_now_add=True, verbose_name='Last Updated')
 
     class Meta:
@@ -896,9 +941,8 @@ class FarRecord(models.Model):
             r.save()
 
     def revisions(self):
-        """List of object Revisions
-        """
-        return Revision.objects.filter(model='far', record_id=self.far_record_id)
+        """List of object Revisions"""
+        return Revision.revisions(self, 'far_record_id')
 
     @staticmethod
     def related_persons():
@@ -956,7 +1000,8 @@ class FarRecord(models.Model):
                         'name': person['preferred_name'],
                     }
             else:
-                value = str(getattr(self, fieldname, ''))
+                if hasattr(self, fieldname):
+                    value = str(getattr(self, fieldname, ''))
             d[fieldname] = value
         d['family'] = []
         if self.family_number and related['family'].get(self.family_number):
@@ -1126,7 +1171,7 @@ class WraRecord(models.Model):
     occupqual3        = models.CharField(max_length=255, blank=1, verbose_name='Tertiary qualified occupation', help_text='Tertiary qualified occupation; coded')
     occuppotn1        = models.CharField(max_length=255, blank=1, verbose_name='Primary potential occupation', help_text='Primary potential occupation; coded')
     occuppotn2        = models.CharField(max_length=255, blank=1, verbose_name='Secondary potential occupation', help_text='Secondary potential occupation; coded')
-    person = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
+    person = models.ForeignKey(Person, on_delete=models.SET_NULL, blank=1, null=1)
     timestamp         = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
 
     class Meta:
@@ -1209,11 +1254,8 @@ class WraRecord(models.Model):
             r.save()
 
     def revisions(self):
-        """List of object Revisions
-        """
-        return Revision.objects.filter(
-            model='wra', record_id=self.wra_record_id
-        )
+        """List of object Revisions"""
+        return Revision.revisions(self, 'wra_record_id')
 
     @staticmethod
     def related_persons():
@@ -1329,85 +1371,237 @@ class WraRecordPerson():
         super(WraRecord, self).save()
 
 
-class IreiRecord(models.Model):
-    """
-    For some reason Django did not make a migration for IreiRecord so...
-    
-    CREATE TABLE IF NOT EXISTS "names_ireirecord" (
-        -- "irei_id" varchar(255) NOT NULL PRIMARY KEY,
-        "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-        "person_id" varchar(255) NULL REFERENCES "names_person" ("nr_id") DEFERRABLE INITIALLY DEFERRED,
-        "fetch_ts" date NOT NULL,
-        "birthday" varchar(255) NOT NULL,
-        -- "birthdate" date,
-        "lastname" varchar(255) NOT NULL,
-        "firstname" varchar(255) NOT NULL,
-        "middlename" varchar(255) NOT NULL,
-        "preferredname" varchar(255) NOT NULL
-    );
-    CREATE INDEX "names_ireirecord_person_id_876c7772" ON "names_ireirecord" ("person_id");
-    """
-    #irei_id   = models.CharField(max_length=255, primary_key=1, verbose_name='Irei ID')
-    person    = models.ForeignKey(Person, on_delete=models.DO_NOTHING, blank=1, null=1)
-    fetch_ts  = models.DateField(auto_now_add=True,   verbose_name='Last fetched')
-    birthday   = models.CharField(max_length=255, blank=1, verbose_name='Birthday')
-    #birthdate  = models.DateField(max_length=255, blank=1, verbose_name='Birth date')
-    lastname   = models.CharField(max_length=255, blank=1, verbose_name='Last name')
-    firstname  = models.CharField(max_length=255, blank=1, verbose_name='First name')
-    middlename = models.CharField(max_length=255, blank=1, verbose_name='Middle name')
-    preferredname = models.CharField(max_length=255, blank=1, verbose_name='Preferred name')
-
-    class Meta:
-        verbose_name = "Irei Record"
-
-    #def __repr__(self):
-    #    return '<{}(irei_id={})>'.format(
-    #        self.__class__.__name__, self.irei_id
-    #    )
-
-    #def __str__(self):
-    #    return self.irei_id
-
-    @staticmethod
-    def load_rowd(rowd):
-        """Given a JSON dict from a list, return an IreiRecord object
-        
-        Reads data files from irei-fetch/ireizo-api-fetch-v2.py
-        """
-        #try:
-        #    birth_date = parser.parse(rowd['birthday'])
-        #except parser._parser.ParserError:
-        #    birth_date = None
-        try:
-            #o = IreiRecord.objects.get( irei_id=rowd['irei_id'] )
-            o = IreiRecord.objects.get(
-                birthday=rowd['birthday'],
-                #birthdate=birth_date,
-                lastname=rowd['lastname'],
-                firstname=rowd['firstname'],
-                middlename=rowd['middlename'],
-            )
-        except IreiRecord.DoesNotExist:
-            o = IreiRecord()
-        for key,val in rowd.items():
-            if val:
-                if isinstance(val, str):
-                    val = val.replace('00:00:00', '').strip()
-                setattr(o, key, val)
-        return o
-
 IREIRECORD_FIELDS = [
     'person_id',
+    'irei_id',
     'fetch_ts',
-    #'irei_id',
-    'birthday',
-    #'birthdate',
+    'year',
+    'birthday',  # -> birthdate',
     'lastname',
     'firstname',
     'middlename',
     'preferredname',
+    'camp',  # list
 ]
 
+IREI_WALL_FIELDS = {
+    'id': 'irei_id',
+    'name': 'name',
+    'birthday': 'birthday',
+    'year': 'year',
+    'camps': 'camps',
+    '_fetch_ts': 'fetch_ts',
+}
+
+IREI_API_FIELDS = {
+    'id': 'irei_id',
+    'firstName': 'firstname',
+    'middleName': 'middlename',
+    'lastName': 'lastname',
+    'birthday': 'birthday',
+    '_fetch_ts': 'fetch_ts',
+}
+
+class IreiRecord(models.Model):
+    """Irei data from the pubsite-people-*.json files, retrieved by ireizo-fetch/ireizo-pubsite-fetch.py
+    
+    For some reason Django did not make a migration for IreiRecord so...
+    
+    CREATE TABLE IF NOT EXISTS "names_ireirecord" (
+        "irei_id" varchar(255) NOT NULL PRIMARY KEY,
+        "person_id" varchar(255) NULL REFERENCES "names_person" ("nr_id") DEFERRABLE INITIALLY DEFERRED,
+        "year" varchar(255),
+        "birthday" varchar(255) NOT NULL,
+        "birthdate" date,
+        "name" varchar(255) NOT NULL,
+        "lastname" varchar(255) NOT NULL,
+        "firstname" varchar(255) NOT NULL,
+        "middlename" varchar(255) NOT NULL,
+        "camps" varchar(255) NOT NULL,
+        "fetch_ts" date,
+        "timestamp" datetime
+    );
+    CREATE INDEX "names_ireirecord_person_id_76c77728" ON "names_ireirecord" ("irei_id");
+    CREATE INDEX "names_ireirecord_person_id_876c7772" ON "names_ireirecord" ("person_id");
+    """
+    irei_id   = models.CharField(max_length=255, primary_key=1, verbose_name='Irei ID')
+    person    = models.ForeignKey(Person, on_delete=models.SET_NULL, blank=1, null=1)
+    year       = models.CharField(max_length=255, blank=1, verbose_name='Birth year')
+    birthday   = models.CharField(max_length=255, blank=1, verbose_name='Birthday')
+    birthdate  = models.DateField(max_length=255, blank=1, verbose_name='Birth date')
+    name       = models.CharField(max_length=255, blank=1, verbose_name='Name')
+    lastname   = models.CharField(max_length=255, blank=1, verbose_name='Last name')
+    firstname  = models.CharField(max_length=255, blank=1, verbose_name='First name')
+    middlename = models.CharField(max_length=255, blank=1, verbose_name='Middle name')
+    camps      = models.CharField(max_length=255, blank=1, verbose_name='Camps')
+    fetch_ts  = models.DateField(auto_now_add=True, blank=1, null=1, verbose_name='Last fetched')
+    timestamp  = models.DateTimeField(auto_now=True,       verbose_name='Last Modified')
+
+    class Meta:
+        verbose_name = "Irei Record"
+
+    def __repr__(self):
+        return '<{}(irei_id={})>'.format(
+            self.__class__.__name__, self.irei_id
+        )
+
+    def __str__(self):
+        return self.irei_id
+
+    def save(self, *args, **kwargs):
+        """Save IreiRecord
+        """
+        ## has the record changed?
+        #try:
+        #    old = IreiRecord.objects.get(irei_id=self.irei_id)
+        #except IreiRecord.DoesNotExist:
+        #    old = None
+        #changed = Revision.object_has_changed(self, old, IreiRecord)
+        ## now save
+        self.timestamp = timezone.now()
+        super(IreiRecord, self).save()
+        #if changed:
+        #    r = Revision(
+        #        content_object=self,
+        #        username=username, note=note, diff=make_diff(old, self)
+        #    )
+        #    r.save()
+
+    @staticmethod
+    def load_irei_data(rowds_api, rowds_wall):
+        """Loads API & Wall data, reconciles them, adds/updates IreiRecord
+        """
+        irei_records = {}
+        # load wall data into dict - already has irei_ids
+        for rowd in rowds_wall:
+            # convert keys from Irei's fieldnames to ours
+            data = {
+                modelfield: rowd.get(filefield)
+                for filefield,modelfield in IREI_WALL_FIELDS.items()
+            }
+            irei_id = data['irei_id']
+            irei_records[irei_id] = data
+        # add API data to irei_people (depends on API data having irei_id)
+        for rowd in rowds_api:
+            # convert keys from Irei's fieldnames to ours
+            data = {
+                modelfield: rowd.get(filefield)
+                for filefield,modelfield in IREI_API_FIELDS.items()
+            }
+            irei_id = data.get('irei_id')
+            # if there's irei_id, match irei_people item and add API data
+            # NOTE API data overwrites WALL data with same fieldname
+            if irei_id and irei_records.get(irei_id):
+                record = irei_records[irei_id]
+                for field,value in data.items():
+                    record[field] = value
+                irei_records[irei_id] = record
+        return irei_records
+
+    @staticmethod
+    def save_record(rowd, fetchdate=date.today(), dryrun=False):
+        """Add or update an IreiRecord based on rowd
+        """
+        irei_id = rowd.pop('irei_id')
+        try:
+            record = IreiRecord.objects.get(irei_id=irei_id)
+            new = False
+        except:
+            record = IreiRecord(irei_id=irei_id)
+            new = True
+        changed = []
+        # special formatting
+        # year
+        if rowd.get('year'):
+            rowd['year'] = str(rowd['year'])
+        # birthday -> birthdate
+        if rowd.get('birthday') and rowd['birthday'] != record.birthday:
+            record.birthday = rowd.pop('birthday')
+            try:
+                record.birthdate = parser.parse(record.birthday)
+            except parser._parser.ParserError:
+                record.birthdate = None
+            changed.append('birthday')
+        # camps
+        camps = '; '.join(rowd.pop('camps'))
+        if camps and camps != record.camps:
+            record.camps = camps
+            changed.append('camps')
+        # don't overwrite persons
+        # irei data shouldn't include this but just to be sure...
+        for fieldname in ['person', 'person_id', 'nr_id']:
+            if rowd.get(fieldname):
+                rowd.pop(fieldname)
+        # everything else
+        for fieldname,value in rowd.items():
+            if rowd.get(fieldname) and rowd[fieldname] != getattr(record,fieldname):
+                setattr(record, fieldname, value)
+                changed.append(fieldname)
+        record.fetch_ts = fetchdate
+        if not (new or changed):
+            return None  # no change, just quit now
+        
+        # "dryrun" makes the next part awkward so flip
+        if dryrun: armed = False
+        else:      armed = True
+        
+        if new:
+            feedback = 'created'
+        elif changed:
+            feedback = f'updated {changed}'
+        if armed:
+            record.save()
+        else:
+            feedback = f'{feedback} DRYRUN'
+        return feedback
+        
+
+    @staticmethod
+    def related_persons():
+        query = """
+            SELECT names_ireirecord.irei_id, names_person.nr_id,
+                   names_person.preferred_name
+            FROM names_ireirecord
+            INNER JOIN names_person ON names_ireirecord.person_id = names_person.nr_id
+        """
+        with connections['names'].cursor() as cursor:
+            cursor.execute(query)
+            return {
+                irei_id: {
+                    'nr_id': nr_id, 'preferred_name': preferred_name
+                }
+                for irei_id,nr_id,preferred_name in cursor.fetchall()
+                if nr_id
+            }
+
+    def dict(self, related):
+        """JSON-serializable dict
+        """
+        d = {'id': self.irei_id}
+        for fieldname in FIELDS_IREIRECORD:
+            if fieldname == 'person':
+                value = None
+                if related['persons'].get(self.irei_id):
+                    person = related['persons'][self.irei_id]
+                    value = {
+                        'id': person['nr_id'],
+                        'name': person['preferred_name'],
+                    }
+            else:
+                value = str(getattr(self, fieldname, ''))
+            d[fieldname] = value
+        return d
+
+    def post(self, related, ds):
+        """Post IreiRecord to Elasticsearch
+        """
+        data = self.dict(related)
+        es_class = ELASTICSEARCH_CLASSES_BY_MODEL['ireirecord']
+        return es_class.from_dict(data['irei_id'], data).save(
+            index=ds.index_name('ireirecord'), using=ds.es
+        )
+
+    
 
 class IreiRecordPerson():
     """Fake class used for importing IreiRecord->Person links"""
@@ -1424,6 +1618,20 @@ class Revision(models.Model):
 
     def __repr__(self):
         return f'<Revision {self.content_object} {self.timestamp} {self.username}>'
+
+    @staticmethod
+    def revisions(obj, fieldname):
+        """List of revisions for object
+        
+        @param obj: OBJECT The object
+        @param fieldname: str Name of primary key field
+        """
+        return Revision.objects.filter(
+            content_type=ContentType.objects.get(
+                app_label=obj._meta.app_label, model=obj._meta.model_name
+            ),
+            object_id=getattr(obj, fieldname)
+        )
 
     @staticmethod
     def object_has_changed(new_object, old_object, object_class):
@@ -1564,7 +1772,7 @@ MODEL_CLASSES = {
     'facility': Facility,
     'location': Location,
     'person': Person,
-    'personfacility': PersonFacility,
+    'personlocation': PersonLocation,
     'farrecord': FarRecord,
     'wrarecord': WraRecord,
     'farrecordperson': FarRecordPerson,
