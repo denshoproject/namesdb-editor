@@ -147,14 +147,16 @@ install-virtualenv:
 	@echo ""
 	@echo "install-virtualenv -----------------------------------------------------"
 	apt-get --assume-yes install python3-pip python3-venv
-	python3 -m venv $(VIRTUALENV)
+	source $(VIRTUALENV)/bin/activate; \
+	pip3 install -U --cache-dir=$(PIP_CACHE_DIR) pip uv
+	uv venv $(VIRTUALENV)
 
 install-setuptools: install-virtualenv
 	@echo ""
 	@echo "install-setuptools -----------------------------------------------------"
 	apt-get --assume-yes install python-dev
 	source $(VIRTUALENV)/bin/activate; \
-	pip install -U bpython setuptools
+	uv pip install -U --cache-dir=$(PIP_CACHE_DIR) setuptools
 
 
 get-app: get-namesdb-editor get-namesdb-public get-ireizo-public
@@ -176,7 +178,7 @@ install-namesdb-editor: install-virtualenv install-setuptools git-safe-dir
 	@echo "install namesdb-editor -------------------------------------------------"
 	apt-get --assume-yes install imagemagick libjpeg-dev $(LIBMARIADB_PKG) libxml2 libxslt1.1 libxslt1-dev
 	source $(VIRTUALENV)/bin/activate; \
-	pip install -U -r $(INSTALLDIR)/requirements.txt
+	uv pip install -U -r $(INSTALLDIR)/requirements.txt
 	source $(VIRTUALENV)/bin/activate; \
 	cd $(APPDIR)/ && python setup.py install
 # logs dir
@@ -245,7 +247,7 @@ install-namesdb-public: install-virtualenv
 	-rm -Rf $(APPDIR)/namesdb_public
 	ln -s $(INSTALL_PUBLIC)/namessite/namesdb_public $(APPDIR)/namesdb_public
 	source $(VIRTUALENV)/bin/activate; \
-	pip install -U -r $(INSTALL_PUBLIC)/requirements.txt
+	uv pip install -U -r $(INSTALL_PUBLIC)/requirements.txt
 
 uninstall-namesdb-public: install-virtualenv
 
@@ -270,7 +272,7 @@ install-ireizo-public: install-virtualenv
 	-rm -Rf $(APPDIR)/ireizo_public
 	ln -s $(INSTALL_IREIZO)/ireizo_public $(APPDIR)/ireizo_public
 # 	source $(VIRTUALENV)/bin/activate; \
-# 	pip install -U -r $(INSTALL_IREIZO)/requirements.txt
+# 	uv pip install -U -r $(INSTALL_IREIZO)/requirements.txt
 
 uninstall-ireizo-public: install-virtualenv
 
