@@ -6,18 +6,6 @@ SRC_REPO_EDITOR=https://github.com/denshoproject/namesdb-editor
 SRC_REPO_PUBLIC=https://github.com/denshoproject/namesdb-public.git
 SRC_REPO_IREIZO=https://github.com/denshoproject/ireizo-public.git
 
-# Release name e.g. jessie
-DEBIAN_CODENAME := $(shell lsb_release -sc)
-# Release numbers e.g. 8.10
-DEBIAN_RELEASE := $(shell lsb_release -sr)
-# Sortable major version tag e.g. deb8
-DEBIAN_RELEASE_TAG = deb$(shell lsb_release -sr | cut -c1)
-
-PYTHON_VERSION=python3.9
-ifeq ($(DEBIAN_CODENAME), buster)
-	PYTHON_VERSION=python3.7
-endif
-
 INSTALL_BASE=/opt
 INSTALLDIR=$(INSTALL_BASE)/namesdb-editor
 INSTALL_PUBLIC=$(INSTALL_BASE)/namesdb-public
@@ -52,6 +40,24 @@ RUNSERVER_PORT=8004
 SUPERVISOR_GUNICORN_CONF=/etc/supervisor/conf.d/namesdbeditor.conf
 NGINX_CONF=/etc/nginx/sites-available/namesdbeditor.conf
 NGINX_CONF_LINK=/etc/nginx/sites-enabled/namesdbeditor.conf
+
+# Release name e.g. jessie
+DEBIAN_CODENAME := $(shell lsb_release -sc)
+# Release numbers e.g. 8.10
+DEBIAN_RELEASE := $(shell lsb_release -sr)
+# Sortable major version tag e.g. deb8
+DEBIAN_RELEASE_TAG = deb$(shell lsb_release -sr | cut -c1)
+
+PYTHON_VERSION=
+ifeq ($(DEBIAN_CODENAME), bullseye)
+	PYTHON_VERSION=3.9
+endif
+ifeq ($(DEBIAN_CODENAME), bookworm)
+	PYTHON_VERSION=3.11.2
+endif
+ifeq ($(DEBIAN_CODENAME), trixie)
+	PYTHON_VERSION=3.11.6
+endif
 
 
 .PHONY: help
