@@ -1,6 +1,11 @@
 # namesdb-editor - Names Registry Editor
 
 
+## But first, the original NamesDB Editor
+
+If you need to update the *original* [Names Registry](https://ddr.densho.org/names/) you are probably looking for [denshoproject/namesdb/](https://github.com/denshoproject/namesdb/).
+
+
 ## Installation
 
 Clone the repo and install:
