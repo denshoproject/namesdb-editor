@@ -6,18 +6,6 @@ SRC_REPO_EDITOR=https://github.com/denshoproject/namesdb-editor
 SRC_REPO_PUBLIC=https://github.com/denshoproject/namesdb-public.git
 SRC_REPO_IREIZO=https://github.com/denshoproject/ireizo-public.git
 
-# Release name e.g. jessie
-DEBIAN_CODENAME := $(shell lsb_release -sc)
-# Release numbers e.g. 8.10
-DEBIAN_RELEASE := $(shell lsb_release -sr)
-# Sortable major version tag e.g. deb8
-DEBIAN_RELEASE_TAG = deb$(shell lsb_release -sr | cut -c1)
-
-PYTHON_VERSION=python3.9
-ifeq ($(DEBIAN_CODENAME), buster)
-	PYTHON_VERSION=python3.7
-endif
-
 INSTALL_BASE=/opt
 INSTALLDIR=$(INSTALL_BASE)/namesdb-editor
 INSTALL_PUBLIC=$(INSTALL_BASE)/namesdb-public
@@ -52,6 +40,24 @@ RUNSERVER_PORT=8004
 SUPERVISOR_GUNICORN_CONF=/etc/supervisor/conf.d/namesdbeditor.conf
 NGINX_CONF=/etc/nginx/sites-available/namesdbeditor.conf
 NGINX_CONF_LINK=/etc/nginx/sites-enabled/namesdbeditor.conf
+
+# Release name e.g. jessie
+DEBIAN_CODENAME := $(shell lsb_release -sc)
+# Release numbers e.g. 8.10
+DEBIAN_RELEASE := $(shell lsb_release -sr)
+# Sortable major version tag e.g. deb8
+DEBIAN_RELEASE_TAG = deb$(shell lsb_release -sr | cut -c1)
+
+PYTHON_VERSION=
+ifeq ($(DEBIAN_CODENAME), bullseye)
+	PYTHON_VERSION=3.9
+endif
+ifeq ($(DEBIAN_CODENAME), bookworm)
+	PYTHON_VERSION=3.11.2
+endif
+ifeq ($(DEBIAN_CODENAME), trixie)
+	PYTHON_VERSION=3.11.6
+endif
 
 
 .PHONY: help
@@ -147,14 +153,16 @@ install-virtualenv:
 	@echo ""
 	@echo "install-virtualenv -----------------------------------------------------"
 	apt-get --assume-yes install python3-pip python3-venv
-	python3 -m venv $(VIRTUALENV)
+	source $(VIRTUALENV)/bin/activate; \
+	pip3 install -U --cache-dir=$(PIP_CACHE_DIR) pip uv
+	uv venv $(VIRTUALENV)
 
 install-setuptools: install-virtualenv
 	@echo ""
 	@echo "install-setuptools -----------------------------------------------------"
 	apt-get --assume-yes install python-dev
 	source $(VIRTUALENV)/bin/activate; \
-	pip install -U bpython setuptools
+	uv pip install -U --cache-dir=$(PIP_CACHE_DIR) setuptools
 
 
 get-app: get-namesdb-editor get-namesdb-public get-ireizo-public
@@ -176,7 +184,7 @@ install-namesdb-editor: install-virtualenv install-setuptools git-safe-dir
 	@echo "install namesdb-editor -------------------------------------------------"
 	apt-get --assume-yes install imagemagick libjpeg-dev $(LIBMARIADB_PKG) libxml2 libxslt1.1 libxslt1-dev
 	source $(VIRTUALENV)/bin/activate; \
-	pip install -U -r $(INSTALLDIR)/requirements.txt
+	uv pip install -U -r $(INSTALLDIR)/requirements.txt
 	source $(VIRTUALENV)/bin/activate; \
 	cd $(APPDIR)/ && python setup.py install
 # logs dir
@@ -245,7 +253,7 @@ install-namesdb-public: install-virtualenv
 	-rm -Rf $(APPDIR)/namesdb_public
 	ln -s $(INSTALL_PUBLIC)/namessite/namesdb_public $(APPDIR)/namesdb_public
 	source $(VIRTUALENV)/bin/activate; \
-	pip install -U -r $(INSTALL_PUBLIC)/requirements.txt
+	uv pip install -U -r $(INSTALL_PUBLIC)/requirements.txt
 
 uninstall-namesdb-public: install-virtualenv
 
@@ -270,7 +278,7 @@ install-ireizo-public: install-virtualenv
 	-rm -Rf $(APPDIR)/ireizo_public
 	ln -s $(INSTALL_IREIZO)/ireizo_public $(APPDIR)/ireizo_public
 # 	source $(VIRTUALENV)/bin/activate; \
-# 	pip install -U -r $(INSTALL_IREIZO)/requirements.txt
+# 	uv pip install -U -r $(INSTALL_IREIZO)/requirements.txt
 
 uninstall-ireizo-public: install-virtualenv
 

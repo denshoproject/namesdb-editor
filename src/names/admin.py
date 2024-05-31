@@ -542,6 +542,7 @@ class PersonAdmin(admin.ModelAdmin):
             'preexclusion_residence_city', 'preexclusion_residence_state',
             'postexclusion_residence_city', 'postexclusion_residence_state',
             'exclusion_order_title', 'exclusion_order_id',
+            'bio_notes', 'admin_notes', 'lcnaf_url', 'snac_url', 'wikidata_url',
     )
     inlines = [
         PersonLocationInline,
@@ -569,6 +570,11 @@ class PersonAdmin(admin.ModelAdmin):
             ('preexclusion_residence_city', 'preexclusion_residence_state'),
             ('postexclusion_residence_city', 'postexclusion_residence_state'),
             ('exclusion_order_title', 'exclusion_order_id'),
+            'bio_notes',
+            'admin_notes',
+            'lcnaf_url',
+            'snac_url',
+            'wikidata_url',
             'note',
         )}),
     )

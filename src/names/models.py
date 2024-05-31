@@ -316,6 +316,13 @@ class Location(models.Model):
 
 
 class Person(models.Model):
+    """
+ALTER TABLE names_person ADD COLUMN "bio_notes" text NULL;
+ALTER TABLE names_person ADD COLUMN "admin_notes" text NULL;
+ALTER TABLE names_person ADD COLUMN "lcnaf_url" varchar(255) NULL;
+ALTER TABLE names_person ADD COLUMN "snac_url" varchar(255) NULL;
+ALTER TABLE names_person ADD COLUMN "wikidata_url" varchar(255) NULL;
+    """
     nr_id                         = models.CharField(max_length=255, primary_key=True,      verbose_name='Names Registry ID',         help_text='Names Registry unique identifier')
     family_name                   = models.CharField(max_length=255,                        verbose_name='Last Name',                 help_text='Preferred family or last name')
     given_name                    = models.CharField(max_length=255,                        verbose_name='First Name',                help_text='Preferred given or first name')
@@ -342,6 +349,11 @@ class Person(models.Model):
     postexclusion_residence_state = models.CharField(max_length=255, blank=True, null=True, verbose_name='Post-detention State',      help_text='Reported state of residence immediately following detention')
     exclusion_order_title         = models.CharField(max_length=255, blank=True, null=True, verbose_name='Exclusion Order',           help_text='Name of U.S. Army exclusion order')
     exclusion_order_id            = models.CharField(max_length=255, blank=True, null=True, verbose_name='Exclusion Order ID',        help_text='Order ID ')
+    bio_notes                     = models.TextField(                blank=True, null=True, verbose_name='Biographical Notes',        help_text='Key biographical notes of interest for public display')
+    admin_notes                   = models.TextField(                blank=True, null=True, verbose_name='Administrative Notes',      help_text='Archival administration notes for internal use only')
+    lcnaf_url                     = models.URLField(                 blank=True, null=True, verbose_name='LC Name Auth File link',    help_text='LC Name Authority File reference link')
+    snac_url                      = models.URLField(                 blank=True, null=True, verbose_name='SNAC Reference',            help_text='Social Networks and Archival Context (SNAC) authority record reference url')
+    wikidata_url                  = models.URLField(                 blank=True, null=True, verbose_name='Wikidata Reference',        help_text='Wikidata Project reference url')
 #    record_id		blank=1	Record ID	ID of related record
 #    record_type		blank=1	Record Source	Type of related record. e.g., 'far', 'wra' 
     timestamp                     = models.DateTimeField(auto_now_add=True,   verbose_name='Last Updated')
