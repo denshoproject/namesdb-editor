@@ -56,7 +56,8 @@ DATABASES = {
 
 DATABASE_ROUTERS = ['names.models.NamesRouter']
 
-DOCSTORE_HOST = config.get('database', 'namesdb_host')
+DOCSTORE_ENABLED = config.getboolean('database','docstore_enabled')
+DOCSTORE_HOST = config.get('database', 'docstore_host')
 DOCSTORE_SSL_CERTFILE = config.get('database', 'docstore_ssl_certfile')
 DOCSTORE_USERNAME = 'elastic'
 DOCSTORE_PASSWORD = config.get('database', 'docstore_password')
