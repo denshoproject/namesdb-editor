@@ -340,15 +340,25 @@ def load_facility(datafile, sql_class, username, note):
 @click.argument('output')
 @click.argument('username')
 def loadirei(debug, fetchdate, dryrun, output, username):
-    """Load data files from JSONL output of irei-fetch/ireizo.py
-    
-    output:
-    - Directory containing Irei API and wall data e.g. output/20240118
-    - File containing Irei API and wall data e.g. output/20240118/api-people-19.json
+    """Load data files from JSONL output from irei-fetch
 
-    Expectations:
+    \b
+    OUTPUT
+    - Data is downloaded from Irei using ireizo-api-fetch.py
+      and ireizo-pubsite-fetch.py
+    - Directory containing Irei API and wall data e.g. output/20240118
+    - File containing Irei API and wall data
+      e.g. output/20240118/api-people-19.json
+
+    \b
+    Expectations
     - An output directory contains both API and wall data
     - all data is in JSONL
+
+    \b
+    Usage
+    export TODAY=`date +%Y%m%d`
+    namesdb loadirei /opt/ireizo-fetch/output/$TODAY/ gjost | tee -a log/$TODAY-irei-import.log
     """
     if fetchdate:
         fetchdate = parser.parse(fetchdate)
