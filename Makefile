@@ -153,16 +153,9 @@ install-virtualenv:
 	@echo ""
 	@echo "install-virtualenv -----------------------------------------------------"
 	apt-get --assume-yes install python3-pip python3-venv
+	python3 -m venv $(VIRTUALENV)
 	source $(VIRTUALENV)/bin/activate; \
-	pip3 install -U --cache-dir=$(PIP_CACHE_DIR) pip uv
-	uv venv $(VIRTUALENV)
-
-install-setuptools: install-virtualenv
-	@echo ""
-	@echo "install-setuptools -----------------------------------------------------"
-	apt-get --assume-yes install python-dev
-	source $(VIRTUALENV)/bin/activate; \
-	uv pip install -U --cache-dir=$(PIP_CACHE_DIR) setuptools
+	pip3 install -U --cache-dir=$(PIP_CACHE_DIR) uv
 
 
 get-app: get-namesdb-editor get-namesdb-public get-ireizo-public
@@ -179,7 +172,7 @@ get-namesdb-editor:
 	@echo "get-namesdb-editor -----------------------------------------------------"
 	git pull
 
-install-namesdb-editor: install-virtualenv install-setuptools git-safe-dir
+install-namesdb-editor: install-virtualenv git-safe-dir
 	@echo ""
 	@echo "install namesdb-editor -------------------------------------------------"
 	apt-get --assume-yes install imagemagick libjpeg-dev $(LIBMARIADB_PKG) libxml2 libxslt1.1 libxslt1-dev
