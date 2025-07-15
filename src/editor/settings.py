@@ -226,7 +226,7 @@ LOGGING = {
         'file': {
             'level': LOG_LEVEL,
             'class': 'logging.handlers.WatchedFileHandler',
-            'filename': oLOG_FILE,
+            'filename': LOG_FILE,
             'filters': [],
             'formatter': 'verbose',
         },
