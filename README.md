@@ -28,6 +28,7 @@ allowed_hosts=namesdb-editor.densho.org, namesdb-editor.local, 192.168.1.101
 
 Become the `ddr` user and set up the database:
 ```
+$ cd /opt/namesdb-editor/
 $ sudo su ddr
 $ source venv/names/bin/activate
 $ python src/manage.py migrate
@@ -37,9 +38,9 @@ $ python src/manage.py createsuperuser
 ## Running the web application
 
 ```
-$ sudo su ddr
-$ source venv/names/bin/activate
-$ python src/manage.py runserver 0.0.0.0:8000
+cd /opt/namesdb-editor/
+sudo su ddr
+make runserver
 ```
 
 
@@ -48,7 +49,9 @@ $ python src/manage.py runserver 0.0.0.0:8000
 Use the Django shell:
 
 ```
-$ python src/manage.py shell
+cd /opt/namesdb-editor/
+sudo su ddr
+python src/manage.py shell
 
 >>> from names import models
 
