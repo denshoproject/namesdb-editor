@@ -63,3 +63,17 @@ python src/manage.py shell
 
 >>> models.load_facilities('/opt/namesdb-data/0.2/0_2-far-master.csv')
 ```
+
+
+## Importing Ireizo data
+
+`namesdb loadirei` can load data retrieved from the Ireizo API (see https://github.com/denshoproject/ireizo-fetch).  Replace `USERNAME` with your username.
+```
+cd /opt/namesdb-editor/
+mkdir -p log
+sudo chown -R ddr:ddr log
+sudo su ddr
+source venv/names/bin/activate
+export TODAY=`date +%Y%m%d`
+namesdb loadirei /opt/ireizo-fetch/output/$TODAY/ USERNAME | tee -a log/$TODAY-irei-import.log
+```
