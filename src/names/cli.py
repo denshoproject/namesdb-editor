@@ -366,6 +366,8 @@ def loadirei(debug, fetchdate, dryrun, output, username):
         paths = sorted(Path(output).iterdir())
     elif Path(output).is_file():
         paths = [Path(output)]
+    else:
+        click.echo(f"Could not make path {Path(output)}")
     rowds_api = []
     rowds_wall = []
     for n,path in enumerate(paths):
