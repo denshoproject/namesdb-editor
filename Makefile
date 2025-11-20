@@ -25,7 +25,7 @@ CONF_LOCAL=$(CONF_BASE)/namesdbeditor-local.cfg
 CONF_SECRET=$(CONF_BASE)/namesdbeditor-secret-key.txt
 
 SQLITE_BASE=$(INSTALLDIR)/db
-LOG_BASE=/var/log/ddr
+LOG_BASE=/var/log/names
 
 MEDIA_BASE=/var/www/namesdbeditor
 MEDIA_ROOT=$(MEDIA_BASE)/media

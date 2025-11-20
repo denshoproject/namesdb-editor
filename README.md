@@ -14,6 +14,7 @@ $ git clone https://github.com/denshoproject/namesdb-editor.git
 $ sudo mv namesdb-editor /opt/
 $ cd /opt/namesdb-editor/
 $ sudo make install
+$ sudo make install-configs
 ```
 
 Edit `etc/ddr/namesdbeditor-local.cfg`.
@@ -27,6 +28,7 @@ allowed_hosts=namesdb-editor.densho.org, namesdb-editor.local, 192.168.1.101
 
 Become the `ddr` user and set up the database:
 ```
+$ cd /opt/namesdb-editor/
 $ sudo su ddr
 $ source venv/names/bin/activate
 $ python src/manage.py migrate
@@ -36,9 +38,9 @@ $ python src/manage.py createsuperuser
 ## Running the web application
 
 ```
-$ sudo su ddr
-$ source venv/names/bin/activate
-$ python src/manage.py runserver 0.0.0.0:8000
+cd /opt/namesdb-editor/
+sudo su ddr
+make runserver
 ```
 
 
@@ -47,7 +49,9 @@ $ python src/manage.py runserver 0.0.0.0:8000
 Use the Django shell:
 
 ```
-$ python src/manage.py shell
+cd /opt/namesdb-editor/
+sudo su ddr
+python src/manage.py shell
 
 >>> from names import models
 
@@ -58,4 +62,18 @@ $ python src/manage.py shell
 >>> models.load_csv(models.FarRecord, '/opt/namesdb-data/0.2/0_2-far-master.csv', username='gjost', num_records=10)
 
 >>> models.load_facilities('/opt/namesdb-data/0.2/0_2-far-master.csv')
+```
+
+
+## Importing Ireizo data
+
+`namesdb loadirei` can load data retrieved from the Ireizo API (see https://github.com/denshoproject/ireizo-fetch).  Replace `USERNAME` with your username.
+```
+cd /opt/namesdb-editor/
+mkdir -p log
+sudo chown -R ddr:ddr log
+sudo su ddr
+source venv/names/bin/activate
+export TODAY=`date +%Y%m%d`
+namesdb loadirei /opt/ireizo-fetch/output/$TODAY/ USERNAME | tee -a log/$TODAY-irei-import.log
 ```
