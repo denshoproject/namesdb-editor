@@ -14,6 +14,7 @@ $ git clone https://github.com/denshoproject/namesdb-editor.git
 $ sudo mv namesdb-editor /opt/
 $ cd /opt/namesdb-editor/
 $ sudo make install
+$ sudo make install-configs
 ```
 
 Edit `etc/ddr/namesdbeditor-local.cfg`.
